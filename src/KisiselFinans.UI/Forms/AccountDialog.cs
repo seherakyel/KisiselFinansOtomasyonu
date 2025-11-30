@@ -15,10 +15,17 @@ public class AccountDialog : Form
     private TextBox _txtName = null!;
     private ComboBox _cmbType = null!;
     private ComboBox _cmbCurrency = null!;
-    private NumericUpDown _txtInitialBalance = null!;
-    private NumericUpDown _txtCreditLimit = null!;
+    private TextBox _txtInitialBalance = null!;
+    private TextBox _txtCreditLimit = null!;
     private NumericUpDown _txtCutoffDay = null!;
     private List<AccountType> _accountTypes = new();
+
+    private static readonly Color AccentColor = Color.FromArgb(168, 85, 247);
+    private static readonly Color AccentLight = Color.FromArgb(192, 132, 252);
+    private static readonly Color BgDark = Color.FromArgb(17, 24, 39);
+    private static readonly Color BgCard = Color.FromArgb(31, 41, 55);
+    private static readonly Color BorderColor = Color.FromArgb(55, 65, 81);
+    private static readonly Color TextMuted = Color.FromArgb(148, 163, 184);
 
     public AccountDialog(int userId, int? accountId)
     {
@@ -30,119 +37,187 @@ public class AccountDialog : Form
 
     private void InitializeComponent()
     {
-        Text = _accountId.HasValue ? "🏦 Hesap Düzenle" : "🏦 Yeni Hesap";
-        Size = new Size(450, 450);
+        var isEdit = _accountId.HasValue;
+        Text = isEdit ? "Hesap Duzenle" : "Yeni Hesap";
+        Size = new Size(480, 580);
         StartPosition = FormStartPosition.CenterParent;
-        FormBorderStyle = FormBorderStyle.FixedDialog;
-        MaximizeBox = false;
-        MinimizeBox = false;
-        BackColor = AppTheme.PrimaryDark;
+        FormBorderStyle = FormBorderStyle.None;
+        BackColor = BgDark;
 
-        var panel = new Panel
+        var mainPanel = new Panel { Dock = DockStyle.Fill, BackColor = BgDark };
+
+        // ===== HEADER =====
+        var header = new Panel { Dock = DockStyle.Top, Height = 90, BackColor = BgDark };
+
+        var iconPanel = new Panel { Size = new Size(56, 56), Location = new Point(35, 17) };
+        iconPanel.Paint += (s, e) =>
         {
-            Dock = DockStyle.Fill,
-            Padding = new Padding(30),
-            BackColor = AppTheme.PrimaryDark
+            e.Graphics.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
+            using var brush = new SolidBrush(AccentColor);
+            e.Graphics.FillEllipse(brush, 0, 0, 55, 55);
+            using var font = new Font("Segoe UI", 22);
+            e.Graphics.DrawString("🏦", font, Brushes.White, 8, 8);
         };
 
-        int y = 10;
-        const int spacing = 55;
-
-        var lblName = CreateLabel("Hesap Adı", y);
-        _txtName = new TextBox { Location = new Point(0, y + 20), Size = new Size(380, 32) };
-        AppTheme.StyleTextBox(_txtName);
-
-        y += spacing;
-        var lblType = CreateLabel("Hesap Türü", y);
-        _cmbType = new ComboBox
+        header.Controls.Add(iconPanel);
+        header.Controls.Add(new Label
         {
-            Location = new Point(0, y + 20),
-            Size = new Size(180, 32),
-            DropDownStyle = ComboBoxStyle.DropDownList
-        };
-        AppTheme.StyleComboBox(_cmbType);
-
-        var lblCurrency = CreateLabel("Para Birimi", y, 200);
-        _cmbCurrency = new ComboBox
+            Text = isEdit ? "Hesap Duzenle" : "Yeni Hesap",
+            Font = new Font("Segoe UI", 20, FontStyle.Bold),
+            ForeColor = Color.White,
+            Location = new Point(105, 22),
+            AutoSize = true
+        });
+        header.Controls.Add(new Label
         {
-            Location = new Point(200, y + 20),
-            Size = new Size(180, 32),
-            DropDownStyle = ComboBoxStyle.DropDownList
-        };
-        _cmbCurrency.Items.AddRange(new[] { "TRY", "USD", "EUR", "GBP", "XAU" });
+            Text = "Hesap bilgilerini girin",
+            Font = new Font("Segoe UI", 11),
+            ForeColor = TextMuted,
+            Location = new Point(107, 52),
+            AutoSize = true
+        });
+        header.Controls.Add(CreateCloseButton());
+
+        var divider = new Panel { Dock = DockStyle.Top, Height = 1, BackColor = BorderColor };
+
+        // ===== CONTENT =====
+        var content = new Panel { Dock = DockStyle.Fill, BackColor = BgDark, Padding = new Padding(35, 20, 35, 20) };
+
+        int y = 0;
+
+        // HESAP ADI
+        content.Controls.Add(CreateLabel("Hesap Adi", y));
+        _txtName = CreateTextBox(y + 28);
+        content.Controls.Add(_txtName);
+
+        y += 75;
+
+        // HESAP TURU & PARA BIRIMI
+        content.Controls.Add(CreateLabel("Hesap Turu", y));
+        _cmbType = CreateComboBox(y + 28, 190);
+        content.Controls.Add(_cmbType);
+
+        content.Controls.Add(CreateLabel("Para Birimi", y, 205));
+        _cmbCurrency = CreateComboBox(y + 28, 185, 205);
+        _cmbCurrency.Items.AddRange(new[] { "TRY - Turk Lirasi", "USD - Dolar", "EUR - Euro", "GBP - Sterlin" });
         _cmbCurrency.SelectedIndex = 0;
-        AppTheme.StyleComboBox(_cmbCurrency);
+        content.Controls.Add(_cmbCurrency);
 
-        y += spacing;
-        var lblInitial = CreateLabel("Başlangıç Bakiyesi", y);
-        _txtInitialBalance = new NumericUpDown
-        {
-            Location = new Point(0, y + 20),
-            Size = new Size(180, 32),
-            Maximum = 999999999,
-            Minimum = -999999999,
-            DecimalPlaces = 2
-        };
-        AppTheme.StyleNumericUpDown(_txtInitialBalance);
+        y += 75;
 
-        var lblLimit = CreateLabel("Kredi Limiti", y, 200);
-        _txtCreditLimit = new NumericUpDown
-        {
-            Location = new Point(200, y + 20),
-            Size = new Size(180, 32),
-            Maximum = 999999999,
-            DecimalPlaces = 2
-        };
-        AppTheme.StyleNumericUpDown(_txtCreditLimit);
+        // BASLANGIC BAKIYESI & KREDI LIMITI
+        content.Controls.Add(CreateLabel("Baslangic Bakiyesi", y));
+        _txtInitialBalance = CreateAmountTextBox(y + 28, 190);
+        content.Controls.Add(_txtInitialBalance);
 
-        y += spacing;
-        var lblCutoff = CreateLabel("Hesap Kesim Günü (Kredi Kartı)", y);
+        content.Controls.Add(CreateLabel("Kredi Limiti", y, 205));
+        _txtCreditLimit = CreateAmountTextBox(y + 28, 185, 205);
+        content.Controls.Add(_txtCreditLimit);
+
+        y += 75;
+
+        // KESIM GUNU
+        content.Controls.Add(CreateLabel("Hesap Kesim Gunu (Kredi Karti icin)", y));
         _txtCutoffDay = new NumericUpDown
         {
-            Location = new Point(0, y + 20),
-            Size = new Size(180, 32),
+            Location = new Point(0, y + 28),
+            Size = new Size(120, 40),
             Minimum = 0,
-            Maximum = 31
+            Maximum = 31,
+            Font = new Font("Segoe UI", 12),
+            BackColor = BgCard,
+            ForeColor = Color.White,
+            BorderStyle = BorderStyle.FixedSingle
         };
-        AppTheme.StyleNumericUpDown(_txtCutoffDay);
+        content.Controls.Add(_txtCutoffDay);
 
-        y += spacing + 20;
-        var btnSave = new Button
+        // ===== FOOTER =====
+        var footer = new Panel
         {
-            Text = "💾 KAYDET",
-            Location = new Point(190, y),
-            Size = new Size(90, 38)
+            Dock = DockStyle.Bottom,
+            Height = 85,
+            BackColor = Color.FromArgb(24, 32, 48)
         };
-        AppTheme.StyleSuccessButton(btnSave);
-        btnSave.Click += async (s, e) => await SaveAsync();
 
-        var btnCancel = new Button
-        {
-            Text = "İPTAL",
-            Location = new Point(290, y),
-            Size = new Size(90, 38)
-        };
-        AppTheme.StyleButton(btnCancel);
+        var btnCancel = CreateButton("Vazgec", BorderColor, 155, 120);
         btnCancel.Click += (s, e) => { DialogResult = DialogResult.Cancel; Close(); };
 
-        panel.Controls.AddRange(new Control[]
-        {
-            lblName, _txtName, lblType, _cmbType, lblCurrency, _cmbCurrency,
-            lblInitial, _txtInitialBalance, lblLimit, _txtCreditLimit,
-            lblCutoff, _txtCutoffDay, btnSave, btnCancel
-        });
+        var btnSave = CreateButton("Kaydet", Color.FromArgb(34, 197, 94), 285, 140);
+        btnSave.Click += async (s, e) => await SaveAsync();
 
-        Controls.Add(panel);
+        footer.Controls.AddRange(new Control[] { btnCancel, btnSave });
+
+        var accentLine = new Panel { Dock = DockStyle.Top, Height = 3, BackColor = AccentColor };
+
+        mainPanel.Controls.Add(content);
+        mainPanel.Controls.Add(divider);
+        mainPanel.Controls.Add(header);
+        mainPanel.Controls.Add(footer);
+        mainPanel.Controls.Add(accentLine);
+
+        Controls.Add(mainPanel);
+    }
+
+    private Label CreateCloseButton()
+    {
+        var btn = new Label
+        {
+            Text = "✕", Font = new Font("Segoe UI", 14),
+            ForeColor = Color.FromArgb(100, 116, 139),
+            Size = new Size(44, 44), Location = new Point(420, 10),
+            TextAlign = ContentAlignment.MiddleCenter, Cursor = Cursors.Hand
+        };
+        btn.Click += (s, e) => { DialogResult = DialogResult.Cancel; Close(); };
+        btn.MouseEnter += (s, e) => btn.ForeColor = Color.FromArgb(239, 68, 68);
+        btn.MouseLeave += (s, e) => btn.ForeColor = Color.FromArgb(100, 116, 139);
+        return btn;
     }
 
     private Label CreateLabel(string text, int y, int x = 0) => new()
     {
-        Text = text,
-        Font = AppTheme.FontSmall,
-        ForeColor = AppTheme.TextSecondary,
-        Location = new Point(x, y),
-        AutoSize = true
+        Text = text, Font = new Font("Segoe UI Semibold", 10),
+        ForeColor = Color.White, Location = new Point(x, y), AutoSize = true
     };
+
+    private TextBox CreateTextBox(int y, int width = 390, int x = 0) => new()
+    {
+        Location = new Point(x, y), Size = new Size(width, 40),
+        Font = new Font("Segoe UI", 12), BackColor = BgCard,
+        ForeColor = Color.White, BorderStyle = BorderStyle.FixedSingle
+    };
+
+    private TextBox CreateAmountTextBox(int y, int width, int x = 0)
+    {
+        var txt = new TextBox
+        {
+            Location = new Point(x, y), Size = new Size(width, 40),
+            Font = new Font("Segoe UI", 12), BackColor = BgCard,
+            ForeColor = Color.White, BorderStyle = BorderStyle.FixedSingle,
+            Text = "0,00", TextAlign = HorizontalAlignment.Right
+        };
+        txt.GotFocus += (s, e) => { if (txt.Text == "0,00") txt.Text = ""; };
+        txt.LostFocus += (s, e) => { if (string.IsNullOrWhiteSpace(txt.Text)) txt.Text = "0,00"; };
+        return txt;
+    }
+
+    private ComboBox CreateComboBox(int y, int width, int x = 0) => new()
+    {
+        Location = new Point(x, y), Size = new Size(width, 40),
+        DropDownStyle = ComboBoxStyle.DropDownList, Font = new Font("Segoe UI", 11),
+        BackColor = BgCard, ForeColor = Color.White, FlatStyle = FlatStyle.Flat
+    };
+
+    private Button CreateButton(string text, Color bg, int x, int width)
+    {
+        var btn = new Button
+        {
+            Text = text, Size = new Size(width, 45), Location = new Point(x, 20),
+            FlatStyle = FlatStyle.Flat, BackColor = bg, ForeColor = Color.White,
+            Font = new Font("Segoe UI Semibold", 11), Cursor = Cursors.Hand
+        };
+        btn.FlatAppearance.BorderSize = 0;
+        return btn;
+    }
 
     private async Task LoadDataAsync()
     {
@@ -162,9 +237,8 @@ public class AccountDialog : Form
             {
                 _txtName.Text = _account.AccountName;
                 _cmbType.SelectedValue = _account.AccountTypeId;
-                _cmbCurrency.SelectedItem = _account.CurrencyCode;
-                _txtInitialBalance.Value = _account.InitialBalance;
-                _txtCreditLimit.Value = _account.CreditLimit;
+                _txtInitialBalance.Text = _account.InitialBalance.ToString("N2");
+                _txtCreditLimit.Text = _account.CreditLimit.ToString("N2");
                 _txtCutoffDay.Value = _account.CutoffDay;
             }
         }
@@ -174,13 +248,7 @@ public class AccountDialog : Form
     {
         if (string.IsNullOrWhiteSpace(_txtName.Text))
         {
-            MessageBox.Show("Hesap adı zorunludur.", "Uyarı", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-            return;
-        }
-
-        if (_cmbType.SelectedValue == null)
-        {
-            MessageBox.Show("Hesap türü seçiniz.", "Uyarı", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            MessageBox.Show("Hesap adi zorunludur.", "Uyari", MessageBoxButtons.OK, MessageBoxIcon.Warning);
             return;
         }
 
@@ -191,19 +259,28 @@ public class AccountDialog : Form
             var service = new AccountService(unitOfWork);
 
             if (_accountId.HasValue)
-            {
                 _account = await service.GetByIdAsync(_accountId.Value);
-            }
             else
-            {
                 _account = new Account { UserId = _userId };
-            }
 
             _account!.AccountName = _txtName.Text;
-            _account.AccountTypeId = (int)_cmbType.SelectedValue;
-            _account.CurrencyCode = _cmbCurrency.SelectedItem?.ToString() ?? "TRY";
-            _account.InitialBalance = _txtInitialBalance.Value;
-            _account.CreditLimit = _txtCreditLimit.Value;
+            _account.AccountTypeId = (int)(_cmbType.SelectedValue ?? 1);
+            _account.CurrencyCode = _cmbCurrency.SelectedIndex switch
+            {
+                1 => "USD", 2 => "EUR", 3 => "GBP", _ => "TRY"
+            };
+
+            decimal.TryParse(_txtInitialBalance.Text.Replace(",", "."),
+                System.Globalization.NumberStyles.Any,
+                System.Globalization.CultureInfo.InvariantCulture,
+                out var initial);
+            decimal.TryParse(_txtCreditLimit.Text.Replace(",", "."),
+                System.Globalization.NumberStyles.Any,
+                System.Globalization.CultureInfo.InvariantCulture,
+                out var limit);
+
+            _account.InitialBalance = initial;
+            _account.CreditLimit = limit;
             _account.CutoffDay = (int)_txtCutoffDay.Value;
 
             if (_accountId.HasValue)
@@ -216,7 +293,7 @@ public class AccountDialog : Form
         }
         catch (Exception ex)
         {
-            MessageBox.Show($"Kayıt hatası: {ex.Message}", "Hata", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            MessageBox.Show($"Kayit hatasi: {ex.Message}", "Hata", MessageBoxButtons.OK, MessageBoxIcon.Error);
         }
     }
 }

@@ -13,9 +13,16 @@ public class TransferDialog : Form
     private ComboBox _cmbFromAccount = null!;
     private ComboBox _cmbToAccount = null!;
     private DateTimePicker _dateTransaction = null!;
-    private NumericUpDown _txtAmount = null!;
+    private TextBox _txtAmount = null!;
     private TextBox _txtDescription = null!;
     private List<Account> _accounts = new();
+
+    private static readonly Color AccentColor = Color.FromArgb(59, 130, 246);
+    private static readonly Color AccentColorLight = Color.FromArgb(96, 165, 250);
+    private static readonly Color BgDark = Color.FromArgb(17, 24, 39);
+    private static readonly Color BgCard = Color.FromArgb(31, 41, 55);
+    private static readonly Color BorderColor = Color.FromArgb(55, 65, 81);
+    private static readonly Color TextMuted = Color.FromArgb(148, 163, 184);
 
     public TransferDialog(int userId)
     {
@@ -26,110 +33,265 @@ public class TransferDialog : Form
 
     private void InitializeComponent()
     {
-        Text = "🔄 Hesaplar Arası Transfer";
-        Size = new Size(450, 400);
+        Text = "Transfer";
+        Size = new Size(480, 620);
         StartPosition = FormStartPosition.CenterParent;
-        FormBorderStyle = FormBorderStyle.FixedDialog;
-        MaximizeBox = false;
-        MinimizeBox = false;
-        BackColor = AppTheme.PrimaryDark;
+        FormBorderStyle = FormBorderStyle.None;
+        BackColor = BgDark;
 
-        var panel = new Panel
+        // Main container
+        var mainPanel = new Panel { Dock = DockStyle.Fill, BackColor = BgDark };
+
+        // ===== HEADER =====
+        var header = new Panel { Dock = DockStyle.Top, Height = 90, BackColor = BgDark };
+
+        // Icon
+        var iconPanel = new Panel { Size = new Size(56, 56), Location = new Point(35, 17), BackColor = AccentColor };
+        iconPanel.Paint += (s, e) =>
+        {
+            e.Graphics.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
+            using var brush = new SolidBrush(AccentColor);
+            e.Graphics.FillEllipse(brush, 0, 0, 55, 55);
+            using var font = new Font("Segoe UI", 22, FontStyle.Bold);
+            e.Graphics.DrawString("⇄", font, Brushes.White, 10, 10);
+        };
+
+        var lblTitle = new Label
+        {
+            Text = "Para Transferi",
+            Font = new Font("Segoe UI", 20, FontStyle.Bold),
+            ForeColor = Color.White,
+            Location = new Point(105, 22),
+            AutoSize = true
+        };
+
+        var lblSubtitle = new Label
+        {
+            Text = "Hesaplar arasi para aktarimi",
+            Font = new Font("Segoe UI", 11),
+            ForeColor = TextMuted,
+            Location = new Point(107, 52),
+            AutoSize = true
+        };
+
+        var btnClose = CreateCloseButton();
+        header.Controls.AddRange(new Control[] { iconPanel, lblTitle, lblSubtitle, btnClose });
+
+        var divider = new Panel { Dock = DockStyle.Top, Height = 1, BackColor = BorderColor };
+
+        // ===== CONTENT =====
+        var content = new Panel
         {
             Dock = DockStyle.Fill,
-            Padding = new Padding(30),
-            BackColor = AppTheme.PrimaryDark
+            BackColor = BgDark,
+            Padding = new Padding(35, 25, 35, 25)
         };
 
-        int y = 10;
-        const int spacing = 60;
+        int y = 5;
 
-        var lblFrom = CreateLabel("Kaynak Hesap", y);
-        _cmbFromAccount = CreateComboBox(y + 20);
+        // FROM ACCOUNT
+        content.Controls.Add(CreateInputSection("Kaynak Hesap", "Paranin cekilecegi hesap", y));
+        _cmbFromAccount = CreateStyledComboBox(y + 45);
+        content.Controls.Add(_cmbFromAccount);
 
-        y += spacing;
-        var lblTo = CreateLabel("Hedef Hesap", y);
-        _cmbToAccount = CreateComboBox(y + 20);
+        y += 95;
 
-        y += spacing;
-        var lblDate = CreateLabel("Tarih", y);
+        // Arrow indicator
+        var arrowPanel = new Panel
+        {
+            Location = new Point(175, y),
+            Size = new Size(50, 30),
+            BackColor = Color.Transparent
+        };
+        var arrowLabel = new Label
+        {
+            Text = "↓",
+            Font = new Font("Segoe UI", 18),
+            ForeColor = AccentColor,
+            Dock = DockStyle.Fill,
+            TextAlign = ContentAlignment.MiddleCenter
+        };
+        arrowPanel.Controls.Add(arrowLabel);
+        content.Controls.Add(arrowPanel);
+
+        y += 35;
+
+        // TO ACCOUNT
+        content.Controls.Add(CreateInputSection("Hedef Hesap", "Paranin yatirilacagi hesap", y));
+        _cmbToAccount = CreateStyledComboBox(y + 45);
+        content.Controls.Add(_cmbToAccount);
+
+        y += 100;
+
+        // AMOUNT
+        content.Controls.Add(CreateInputSection("Transfer Tutari", "", y));
+
+        var amountContainer = new Panel
+        {
+            Location = new Point(0, y + 40),
+            Size = new Size(395, 55),
+            BackColor = BgCard
+        };
+
+        var currencyLabel = new Label
+        {
+            Text = "₺",
+            Font = new Font("Segoe UI", 20, FontStyle.Bold),
+            ForeColor = AccentColor,
+            Size = new Size(50, 55),
+            TextAlign = ContentAlignment.MiddleCenter,
+            BackColor = BgCard
+        };
+
+        _txtAmount = new TextBox
+        {
+            Location = new Point(50, 8),
+            Size = new Size(340, 40),
+            Font = new Font("Segoe UI", 18),
+            BackColor = BgCard,
+            ForeColor = Color.White,
+            BorderStyle = BorderStyle.None,
+            Text = "0,00",
+            TextAlign = HorizontalAlignment.Right
+        };
+        _txtAmount.GotFocus += (s, e) => { if (_txtAmount.Text == "0,00") _txtAmount.Text = ""; };
+        _txtAmount.LostFocus += (s, e) => { if (string.IsNullOrWhiteSpace(_txtAmount.Text)) _txtAmount.Text = "0,00"; };
+
+        amountContainer.Controls.AddRange(new Control[] { currencyLabel, _txtAmount });
+        content.Controls.Add(amountContainer);
+
+        y += 110;
+
+        // DATE
+        content.Controls.Add(CreateInputSection("Tarih", "", y));
         _dateTransaction = new DateTimePicker
         {
-            Location = new Point(0, y + 20),
-            Size = new Size(180, 32),
-            Format = DateTimePickerFormat.Short,
-            Value = DateTime.Now
+            Location = new Point(0, y + 35),
+            Size = new Size(395, 40),
+            Format = DateTimePickerFormat.Long,
+            Value = DateTime.Now,
+            Font = new Font("Segoe UI", 11)
         };
+        content.Controls.Add(_dateTransaction);
 
-        var lblAmount = CreateLabel("Tutar", y, 200);
-        _txtAmount = new NumericUpDown
-        {
-            Location = new Point(200, y + 20),
-            Size = new Size(180, 32),
-            Maximum = 999999999,
-            DecimalPlaces = 2,
-            ThousandsSeparator = true
-        };
-        AppTheme.StyleNumericUpDown(_txtAmount);
+        y += 85;
 
-        y += spacing;
-        var lblDesc = CreateLabel("Açıklama", y);
+        // DESCRIPTION
+        content.Controls.Add(CreateInputSection("Not (Opsiyonel)", "", y));
         _txtDescription = new TextBox
         {
-            Location = new Point(0, y + 20),
-            Size = new Size(380, 60),
+            Location = new Point(0, y + 35),
+            Size = new Size(395, 45),
+            Font = new Font("Segoe UI", 11),
+            BackColor = BgCard,
+            ForeColor = Color.White,
+            BorderStyle = BorderStyle.FixedSingle,
             Multiline = true
         };
-        AppTheme.StyleTextBox(_txtDescription);
+        content.Controls.Add(_txtDescription);
 
-        y += 90;
-        var btnSave = new Button
+        // ===== FOOTER =====
+        var footer = new Panel
         {
-            Text = "🔄 TRANSFER ET",
-            Location = new Point(160, y),
-            Size = new Size(120, 38)
+            Dock = DockStyle.Bottom,
+            Height = 85,
+            BackColor = Color.FromArgb(24, 32, 48),
+            Padding = new Padding(35, 20, 35, 20)
         };
-        AppTheme.StyleButton(btnSave, true);
-        btnSave.Click += async (s, e) => await SaveAsync();
 
-        var btnCancel = new Button
-        {
-            Text = "İPTAL",
-            Location = new Point(290, y),
-            Size = new Size(90, 38)
-        };
-        AppTheme.StyleButton(btnCancel);
+        var btnCancel = CreateButton("Vazgec", BorderColor, 140, false);
         btnCancel.Click += (s, e) => { DialogResult = DialogResult.Cancel; Close(); };
 
-        panel.Controls.AddRange(new Control[]
-        {
-            lblFrom, _cmbFromAccount, lblTo, _cmbToAccount,
-            lblDate, _dateTransaction, lblAmount, _txtAmount,
-            lblDesc, _txtDescription, btnSave, btnCancel
-        });
+        var btnTransfer = CreateButton("Transfer Yap  ⇄", AccentColor, 270, true);
+        btnTransfer.Click += async (s, e) => await SaveAsync();
 
-        Controls.Add(panel);
+        footer.Controls.AddRange(new Control[] { btnCancel, btnTransfer });
+
+        var accentLine = new Panel { Dock = DockStyle.Top, Height = 3, BackColor = AccentColor };
+
+        mainPanel.Controls.Add(content);
+        mainPanel.Controls.Add(divider);
+        mainPanel.Controls.Add(header);
+        mainPanel.Controls.Add(footer);
+        mainPanel.Controls.Add(accentLine);
+
+        Controls.Add(mainPanel);
     }
 
-    private Label CreateLabel(string text, int y, int x = 0) => new()
+    private Label CreateCloseButton()
     {
-        Text = text,
-        Font = AppTheme.FontSmall,
-        ForeColor = AppTheme.TextSecondary,
-        Location = new Point(x, y),
-        AutoSize = true
+        var btn = new Label
+        {
+            Text = "✕",
+            Font = new Font("Segoe UI", 14),
+            ForeColor = Color.FromArgb(100, 116, 139),
+            Size = new Size(44, 44),
+            Location = new Point(420, 10),
+            TextAlign = ContentAlignment.MiddleCenter,
+            Cursor = Cursors.Hand
+        };
+        btn.Click += (s, e) => { DialogResult = DialogResult.Cancel; Close(); };
+        btn.MouseEnter += (s, e) => btn.ForeColor = Color.FromArgb(239, 68, 68);
+        btn.MouseLeave += (s, e) => btn.ForeColor = Color.FromArgb(100, 116, 139);
+        return btn;
+    }
+
+    private Panel CreateInputSection(string label, string hint, int y)
+    {
+        var panel = new Panel { Location = new Point(0, y), Size = new Size(395, 45), BackColor = Color.Transparent };
+        panel.Controls.Add(new Label
+        {
+            Text = label,
+            Font = new Font("Segoe UI Semibold", 11),
+            ForeColor = Color.White,
+            Location = new Point(0, 0),
+            AutoSize = true
+        });
+        if (!string.IsNullOrEmpty(hint))
+        {
+            panel.Controls.Add(new Label
+            {
+                Text = hint,
+                Font = new Font("Segoe UI", 9),
+                ForeColor = TextMuted,
+                Location = new Point(0, 22),
+                AutoSize = true
+            });
+        }
+        return panel;
+    }
+
+    private ComboBox CreateStyledComboBox(int y) => new()
+    {
+        Location = new Point(0, y),
+        Size = new Size(395, 45),
+        DropDownStyle = ComboBoxStyle.DropDownList,
+        Font = new Font("Segoe UI", 12),
+        BackColor = BgCard,
+        ForeColor = Color.White,
+        FlatStyle = FlatStyle.Flat
     };
 
-    private ComboBox CreateComboBox(int y)
+    private Button CreateButton(string text, Color bgColor, int x, bool isPrimary)
     {
-        var cmb = new ComboBox
+        var btn = new Button
         {
-            Location = new Point(0, y),
-            Size = new Size(380, 32),
-            DropDownStyle = ComboBoxStyle.DropDownList
+            Text = text,
+            Size = new Size(isPrimary ? 160 : 120, 45),
+            Location = new Point(x, 20),
+            FlatStyle = FlatStyle.Flat,
+            BackColor = bgColor,
+            ForeColor = Color.White,
+            Font = new Font("Segoe UI Semibold", 11),
+            Cursor = Cursors.Hand
         };
-        AppTheme.StyleComboBox(cmb);
-        return cmb;
+        btn.FlatAppearance.BorderSize = 0;
+        if (isPrimary)
+        {
+            btn.MouseEnter += (s, e) => btn.BackColor = AccentColorLight;
+            btn.MouseLeave += (s, e) => btn.BackColor = bgColor;
+        }
+        return btn;
     }
 
     private async Task LoadDataAsync()
@@ -139,7 +301,7 @@ public class TransferDialog : Form
         var accountService = new AccountService(unitOfWork);
 
         _accounts = (await accountService.GetUserAccountsAsync(_userId)).ToList();
-        
+
         _cmbFromAccount.DataSource = _accounts.ToList();
         _cmbFromAccount.DisplayMember = "AccountName";
         _cmbFromAccount.ValueMember = "Id";
@@ -153,19 +315,22 @@ public class TransferDialog : Form
     {
         if (_cmbFromAccount.SelectedValue == null || _cmbToAccount.SelectedValue == null)
         {
-            MessageBox.Show("Kaynak ve hedef hesap seçiniz.", "Uyarı", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            MessageBox.Show("Kaynak ve hedef hesap seciniz.", "Uyari", MessageBoxButtons.OK, MessageBoxIcon.Warning);
             return;
         }
 
         if ((int)_cmbFromAccount.SelectedValue == (int)_cmbToAccount.SelectedValue)
         {
-            MessageBox.Show("Kaynak ve hedef hesap aynı olamaz.", "Uyarı", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            MessageBox.Show("Kaynak ve hedef hesap ayni olamaz.", "Uyari", MessageBoxButtons.OK, MessageBoxIcon.Warning);
             return;
         }
 
-        if (_txtAmount.Value <= 0)
+        if (!decimal.TryParse(_txtAmount.Text.Replace(",", "."),
+            System.Globalization.NumberStyles.Any,
+            System.Globalization.CultureInfo.InvariantCulture,
+            out var amount) || amount <= 0)
         {
-            MessageBox.Show("Tutar sıfırdan büyük olmalıdır.", "Uyarı", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            MessageBox.Show("Gecerli bir tutar giriniz.", "Uyari", MessageBoxButtons.OK, MessageBoxIcon.Warning);
             return;
         }
 
@@ -180,7 +345,7 @@ public class TransferDialog : Form
                 FromAccountId = (int)_cmbFromAccount.SelectedValue,
                 ToAccountId = (int)_cmbToAccount.SelectedValue,
                 TransactionDate = _dateTransaction.Value,
-                Amount = _txtAmount.Value,
+                Amount = amount,
                 Description = _txtDescription.Text
             };
 
@@ -191,7 +356,7 @@ public class TransferDialog : Form
         }
         catch (Exception ex)
         {
-            MessageBox.Show($"Transfer hatası: {ex.Message}", "Hata", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            MessageBox.Show($"Transfer hatasi: {ex.Message}", "Hata", MessageBoxButtons.OK, MessageBoxIcon.Error);
         }
     }
 }
