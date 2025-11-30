@@ -1,21 +1,22 @@
-using DevExpress.XtraEditors;
 using KisiselFinans.Business.Services;
 using KisiselFinans.Core.Entities;
 using KisiselFinans.Data.Context;
 using KisiselFinans.Data.Repositories;
+using KisiselFinans.UI.Theme;
 
 namespace KisiselFinans.UI.Forms;
 
-public partial class BudgetDialog : XtraForm
+public class BudgetDialog : Form
 {
     private readonly int _userId;
     private readonly int? _budgetId;
     private Budget? _budget;
 
-    private LookUpEdit _cmbCategory = null!;
-    private SpinEdit _txtLimit = null!;
-    private DateEdit _dateStart = null!;
-    private DateEdit _dateEnd = null!;
+    private ComboBox _cmbCategory = null!;
+    private NumericUpDown _txtLimit = null!;
+    private DateTimePicker _dateStart = null!;
+    private DateTimePicker _dateEnd = null!;
+    private List<Category> _categories = new();
 
     public BudgetDialog(int userId, int? budgetId)
     {
@@ -27,51 +28,82 @@ public partial class BudgetDialog : XtraForm
 
     private void InitializeComponent()
     {
-        Text = _budgetId.HasValue ? "Bütçe Düzenle" : "Yeni Bütçe";
-        Size = new Size(400, 300);
+        Text = _budgetId.HasValue ? "🎯 Bütçe Düzenle" : "🎯 Yeni Bütçe";
+        Size = new Size(400, 340);
         StartPosition = FormStartPosition.CenterParent;
         FormBorderStyle = FormBorderStyle.FixedDialog;
         MaximizeBox = false;
         MinimizeBox = false;
+        BackColor = AppTheme.PrimaryDark;
 
-        var panel = new PanelControl { Dock = DockStyle.Fill, Padding = new Padding(20) };
-
-        var lblCategory = new LabelControl { Text = "Kategori", Location = new Point(20, 20) };
-        _cmbCategory = new LookUpEdit { Location = new Point(20, 40), Size = new Size(330, 28) };
-        _cmbCategory.Properties.Columns.Add(new DevExpress.XtraEditors.Controls.LookUpColumnInfo("CategoryName", "Kategori"));
-        _cmbCategory.Properties.DisplayMember = "CategoryName";
-        _cmbCategory.Properties.ValueMember = "Id";
-
-        var lblLimit = new LabelControl { Text = "Limit", Location = new Point(20, 75) };
-        _txtLimit = new SpinEdit { Location = new Point(20, 95), Size = new Size(330, 28) };
-        _txtLimit.Properties.DisplayFormat.FormatString = "N2";
-
-        var lblStart = new LabelControl { Text = "Başlangıç Tarihi", Location = new Point(20, 130) };
-        _dateStart = new DateEdit
+        var panel = new Panel
         {
-            Location = new Point(20, 150),
-            Size = new Size(155, 28),
-            EditValue = new DateTime(DateTime.Now.Year, DateTime.Now.Month, 1)
+            Dock = DockStyle.Fill,
+            Padding = new Padding(30),
+            BackColor = AppTheme.PrimaryDark
         };
 
-        var lblEnd = new LabelControl { Text = "Bitiş Tarihi", Location = new Point(195, 130) };
-        _dateEnd = new DateEdit
+        int y = 10;
+        const int spacing = 55;
+
+        var lblCategory = CreateLabel("Kategori", y);
+        _cmbCategory = new ComboBox
         {
-            Location = new Point(195, 150),
-            Size = new Size(155, 28),
-            EditValue = new DateTime(DateTime.Now.Year, DateTime.Now.Month, DateTime.DaysInMonth(DateTime.Now.Year, DateTime.Now.Month))
+            Location = new Point(0, y + 20),
+            Size = new Size(320, 32),
+            DropDownStyle = ComboBoxStyle.DropDownList
+        };
+        AppTheme.StyleComboBox(_cmbCategory);
+
+        y += spacing;
+        var lblLimit = CreateLabel("Limit", y);
+        _txtLimit = new NumericUpDown
+        {
+            Location = new Point(0, y + 20),
+            Size = new Size(320, 32),
+            Maximum = 999999999,
+            DecimalPlaces = 2,
+            ThousandsSeparator = true
+        };
+        AppTheme.StyleNumericUpDown(_txtLimit);
+
+        y += spacing;
+        var lblStart = CreateLabel("Başlangıç Tarihi", y);
+        _dateStart = new DateTimePicker
+        {
+            Location = new Point(0, y + 20),
+            Size = new Size(155, 32),
+            Format = DateTimePickerFormat.Short,
+            Value = new DateTime(DateTime.Now.Year, DateTime.Now.Month, 1)
         };
 
-        var btnSave = new SimpleButton
+        var lblEnd = CreateLabel("Bitiş Tarihi", y, 170);
+        _dateEnd = new DateTimePicker
         {
-            Text = "Kaydet",
-            Location = new Point(170, 210),
-            Size = new Size(90, 30),
-            Appearance = { BackColor = Color.FromArgb(40, 167, 69), ForeColor = Color.White }
+            Location = new Point(170, y + 20),
+            Size = new Size(150, 32),
+            Format = DateTimePickerFormat.Short,
+            Value = new DateTime(DateTime.Now.Year, DateTime.Now.Month,
+                DateTime.DaysInMonth(DateTime.Now.Year, DateTime.Now.Month))
         };
+
+        y += spacing + 15;
+        var btnSave = new Button
+        {
+            Text = "💾 KAYDET",
+            Location = new Point(140, y),
+            Size = new Size(90, 38)
+        };
+        AppTheme.StyleSuccessButton(btnSave);
         btnSave.Click += async (s, e) => await SaveAsync();
 
-        var btnCancel = new SimpleButton { Text = "İptal", Location = new Point(265, 210), Size = new Size(90, 30) };
+        var btnCancel = new Button
+        {
+            Text = "İPTAL",
+            Location = new Point(240, y),
+            Size = new Size(80, 38)
+        };
+        AppTheme.StyleButton(btnCancel);
         btnCancel.Click += (s, e) => { DialogResult = DialogResult.Cancel; Close(); };
 
         panel.Controls.AddRange(new Control[]
@@ -83,6 +115,15 @@ public partial class BudgetDialog : XtraForm
         Controls.Add(panel);
     }
 
+    private Label CreateLabel(string text, int y, int x = 0) => new()
+    {
+        Text = text,
+        Font = AppTheme.FontSmall,
+        ForeColor = AppTheme.TextSecondary,
+        Location = new Point(x, y),
+        AutoSize = true
+    };
+
     private async Task LoadDataAsync()
     {
         using var context = DbContextFactory.CreateContext();
@@ -91,32 +132,35 @@ public partial class BudgetDialog : XtraForm
         var categoryService = new CategoryService(unitOfWork);
         var budgetService = new BudgetService(unitOfWork);
 
-        _cmbCategory.Properties.DataSource = (await categoryService.GetExpenseCategories(_userId)).ToList();
+        _categories = (await categoryService.GetExpenseCategories(_userId)).ToList();
+        _cmbCategory.DataSource = _categories;
+        _cmbCategory.DisplayMember = "CategoryName";
+        _cmbCategory.ValueMember = "Id";
 
         if (_budgetId.HasValue)
         {
             _budget = await budgetService.GetByIdAsync(_budgetId.Value);
             if (_budget != null)
             {
-                _cmbCategory.EditValue = _budget.CategoryId;
+                _cmbCategory.SelectedValue = _budget.CategoryId;
                 _txtLimit.Value = _budget.AmountLimit;
-                _dateStart.EditValue = _budget.StartDate;
-                _dateEnd.EditValue = _budget.EndDate;
+                _dateStart.Value = _budget.StartDate;
+                _dateEnd.Value = _budget.EndDate;
             }
         }
     }
 
     private async Task SaveAsync()
     {
-        if (_cmbCategory.EditValue == null)
+        if (_cmbCategory.SelectedValue == null)
         {
-            XtraMessageBox.Show("Kategori seçiniz.", "Uyarı", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            MessageBox.Show("Kategori seçiniz.", "Uyarı", MessageBoxButtons.OK, MessageBoxIcon.Warning);
             return;
         }
 
-        if ((decimal)_txtLimit.Value <= 0)
+        if (_txtLimit.Value <= 0)
         {
-            XtraMessageBox.Show("Limit sıfırdan büyük olmalıdır.", "Uyarı", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            MessageBox.Show("Limit sıfırdan büyük olmalıdır.", "Uyarı", MessageBoxButtons.OK, MessageBoxIcon.Warning);
             return;
         }
 
@@ -126,19 +170,19 @@ public partial class BudgetDialog : XtraForm
             using var unitOfWork = new UnitOfWork(context);
             var service = new BudgetService(unitOfWork);
 
-            if (_budget == null)
+            if (_budgetId.HasValue)
             {
-                _budget = new Budget { UserId = _userId };
+                _budget = await service.GetByIdAsync(_budgetId.Value);
             }
             else
             {
-                _budget = await service.GetByIdAsync(_budgetId!.Value);
+                _budget = new Budget { UserId = _userId };
             }
 
-            _budget!.CategoryId = (int)_cmbCategory.EditValue;
-            _budget.AmountLimit = (decimal)_txtLimit.Value;
-            _budget.StartDate = (DateTime)_dateStart.EditValue;
-            _budget.EndDate = (DateTime)_dateEnd.EditValue;
+            _budget!.CategoryId = (int)_cmbCategory.SelectedValue;
+            _budget.AmountLimit = _txtLimit.Value;
+            _budget.StartDate = _dateStart.Value;
+            _budget.EndDate = _dateEnd.Value;
 
             if (_budgetId.HasValue)
                 await service.UpdateAsync(_budget);
@@ -150,8 +194,7 @@ public partial class BudgetDialog : XtraForm
         }
         catch (Exception ex)
         {
-            XtraMessageBox.Show($"Kayıt hatası: {ex.Message}", "Hata", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            MessageBox.Show($"Kayıt hatası: {ex.Message}", "Hata", MessageBoxButtons.OK, MessageBoxIcon.Error);
         }
     }
 }
-

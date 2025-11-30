@@ -1,23 +1,24 @@
-using DevExpress.XtraEditors;
 using KisiselFinans.Business.Services;
 using KisiselFinans.Core.Entities;
 using KisiselFinans.Data.Context;
 using KisiselFinans.Data.Repositories;
+using KisiselFinans.UI.Theme;
 
 namespace KisiselFinans.UI.Forms;
 
-public partial class AccountDialog : XtraForm
+public class AccountDialog : Form
 {
     private readonly int _userId;
     private readonly int? _accountId;
     private Account? _account;
 
-    private TextEdit _txtName = null!;
-    private LookUpEdit _cmbType = null!;
-    private ComboBoxEdit _cmbCurrency = null!;
-    private SpinEdit _txtInitialBalance = null!;
-    private SpinEdit _txtCreditLimit = null!;
-    private SpinEdit _txtCutoffDay = null!;
+    private TextBox _txtName = null!;
+    private ComboBox _cmbType = null!;
+    private ComboBox _cmbCurrency = null!;
+    private NumericUpDown _txtInitialBalance = null!;
+    private NumericUpDown _txtCreditLimit = null!;
+    private NumericUpDown _txtCutoffDay = null!;
+    private List<AccountType> _accountTypes = new();
 
     public AccountDialog(int userId, int? accountId)
     {
@@ -29,52 +30,99 @@ public partial class AccountDialog : XtraForm
 
     private void InitializeComponent()
     {
-        Text = _accountId.HasValue ? "Hesap Düzenle" : "Yeni Hesap";
-        Size = new Size(450, 400);
+        Text = _accountId.HasValue ? "🏦 Hesap Düzenle" : "🏦 Yeni Hesap";
+        Size = new Size(450, 450);
         StartPosition = FormStartPosition.CenterParent;
         FormBorderStyle = FormBorderStyle.FixedDialog;
         MaximizeBox = false;
         MinimizeBox = false;
+        BackColor = AppTheme.PrimaryDark;
 
-        var panel = new PanelControl { Dock = DockStyle.Fill, Padding = new Padding(20) };
-
-        var lblName = new LabelControl { Text = "Hesap Adı", Location = new Point(20, 20) };
-        _txtName = new TextEdit { Location = new Point(20, 40), Size = new Size(380, 28) };
-
-        var lblType = new LabelControl { Text = "Hesap Türü", Location = new Point(20, 75) };
-        _cmbType = new LookUpEdit { Location = new Point(20, 95), Size = new Size(180, 28) };
-        _cmbType.Properties.Columns.Add(new DevExpress.XtraEditors.Controls.LookUpColumnInfo("TypeName", "Tür"));
-        _cmbType.Properties.DisplayMember = "TypeName";
-        _cmbType.Properties.ValueMember = "Id";
-
-        var lblCurrency = new LabelControl { Text = "Para Birimi", Location = new Point(220, 75) };
-        _cmbCurrency = new ComboBoxEdit { Location = new Point(220, 95), Size = new Size(180, 28) };
-        _cmbCurrency.Properties.Items.AddRange(new[] { "TRY", "USD", "EUR", "GBP", "XAU" });
-        _cmbCurrency.SelectedIndex = 0;
-
-        var lblInitial = new LabelControl { Text = "Başlangıç Bakiyesi", Location = new Point(20, 130) };
-        _txtInitialBalance = new SpinEdit { Location = new Point(20, 150), Size = new Size(180, 28) };
-        _txtInitialBalance.Properties.DisplayFormat.FormatString = "N2";
-
-        var lblLimit = new LabelControl { Text = "Kredi Limiti (Kart için)", Location = new Point(220, 130) };
-        _txtCreditLimit = new SpinEdit { Location = new Point(220, 150), Size = new Size(180, 28) };
-        _txtCreditLimit.Properties.DisplayFormat.FormatString = "N2";
-
-        var lblCutoff = new LabelControl { Text = "Hesap Kesim Günü", Location = new Point(20, 185) };
-        _txtCutoffDay = new SpinEdit { Location = new Point(20, 205), Size = new Size(180, 28) };
-        _txtCutoffDay.Properties.MinValue = 0;
-        _txtCutoffDay.Properties.MaxValue = 31;
-
-        var btnSave = new SimpleButton
+        var panel = new Panel
         {
-            Text = "Kaydet",
-            Location = new Point(220, 320),
-            Size = new Size(90, 30),
-            Appearance = { BackColor = Color.FromArgb(40, 167, 69), ForeColor = Color.White }
+            Dock = DockStyle.Fill,
+            Padding = new Padding(30),
+            BackColor = AppTheme.PrimaryDark
         };
+
+        int y = 10;
+        const int spacing = 55;
+
+        var lblName = CreateLabel("Hesap Adı", y);
+        _txtName = new TextBox { Location = new Point(0, y + 20), Size = new Size(380, 32) };
+        AppTheme.StyleTextBox(_txtName);
+
+        y += spacing;
+        var lblType = CreateLabel("Hesap Türü", y);
+        _cmbType = new ComboBox
+        {
+            Location = new Point(0, y + 20),
+            Size = new Size(180, 32),
+            DropDownStyle = ComboBoxStyle.DropDownList
+        };
+        AppTheme.StyleComboBox(_cmbType);
+
+        var lblCurrency = CreateLabel("Para Birimi", y, 200);
+        _cmbCurrency = new ComboBox
+        {
+            Location = new Point(200, y + 20),
+            Size = new Size(180, 32),
+            DropDownStyle = ComboBoxStyle.DropDownList
+        };
+        _cmbCurrency.Items.AddRange(new[] { "TRY", "USD", "EUR", "GBP", "XAU" });
+        _cmbCurrency.SelectedIndex = 0;
+        AppTheme.StyleComboBox(_cmbCurrency);
+
+        y += spacing;
+        var lblInitial = CreateLabel("Başlangıç Bakiyesi", y);
+        _txtInitialBalance = new NumericUpDown
+        {
+            Location = new Point(0, y + 20),
+            Size = new Size(180, 32),
+            Maximum = 999999999,
+            Minimum = -999999999,
+            DecimalPlaces = 2
+        };
+        AppTheme.StyleNumericUpDown(_txtInitialBalance);
+
+        var lblLimit = CreateLabel("Kredi Limiti", y, 200);
+        _txtCreditLimit = new NumericUpDown
+        {
+            Location = new Point(200, y + 20),
+            Size = new Size(180, 32),
+            Maximum = 999999999,
+            DecimalPlaces = 2
+        };
+        AppTheme.StyleNumericUpDown(_txtCreditLimit);
+
+        y += spacing;
+        var lblCutoff = CreateLabel("Hesap Kesim Günü (Kredi Kartı)", y);
+        _txtCutoffDay = new NumericUpDown
+        {
+            Location = new Point(0, y + 20),
+            Size = new Size(180, 32),
+            Minimum = 0,
+            Maximum = 31
+        };
+        AppTheme.StyleNumericUpDown(_txtCutoffDay);
+
+        y += spacing + 20;
+        var btnSave = new Button
+        {
+            Text = "💾 KAYDET",
+            Location = new Point(190, y),
+            Size = new Size(90, 38)
+        };
+        AppTheme.StyleSuccessButton(btnSave);
         btnSave.Click += async (s, e) => await SaveAsync();
 
-        var btnCancel = new SimpleButton { Text = "İptal", Location = new Point(315, 320), Size = new Size(90, 30) };
+        var btnCancel = new Button
+        {
+            Text = "İPTAL",
+            Location = new Point(290, y),
+            Size = new Size(90, 38)
+        };
+        AppTheme.StyleButton(btnCancel);
         btnCancel.Click += (s, e) => { DialogResult = DialogResult.Cancel; Close(); };
 
         panel.Controls.AddRange(new Control[]
@@ -87,13 +135,25 @@ public partial class AccountDialog : XtraForm
         Controls.Add(panel);
     }
 
+    private Label CreateLabel(string text, int y, int x = 0) => new()
+    {
+        Text = text,
+        Font = AppTheme.FontSmall,
+        ForeColor = AppTheme.TextSecondary,
+        Location = new Point(x, y),
+        AutoSize = true
+    };
+
     private async Task LoadDataAsync()
     {
         using var context = DbContextFactory.CreateContext();
         using var unitOfWork = new UnitOfWork(context);
         var service = new AccountService(unitOfWork);
 
-        _cmbType.Properties.DataSource = (await service.GetAccountTypesAsync()).ToList();
+        _accountTypes = (await service.GetAccountTypesAsync()).ToList();
+        _cmbType.DataSource = _accountTypes;
+        _cmbType.DisplayMember = "TypeName";
+        _cmbType.ValueMember = "Id";
 
         if (_accountId.HasValue)
         {
@@ -101,8 +161,8 @@ public partial class AccountDialog : XtraForm
             if (_account != null)
             {
                 _txtName.Text = _account.AccountName;
-                _cmbType.EditValue = _account.AccountTypeId;
-                _cmbCurrency.EditValue = _account.CurrencyCode;
+                _cmbType.SelectedValue = _account.AccountTypeId;
+                _cmbCurrency.SelectedItem = _account.CurrencyCode;
                 _txtInitialBalance.Value = _account.InitialBalance;
                 _txtCreditLimit.Value = _account.CreditLimit;
                 _txtCutoffDay.Value = _account.CutoffDay;
@@ -114,13 +174,13 @@ public partial class AccountDialog : XtraForm
     {
         if (string.IsNullOrWhiteSpace(_txtName.Text))
         {
-            XtraMessageBox.Show("Hesap adı zorunludur.", "Uyarı", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            MessageBox.Show("Hesap adı zorunludur.", "Uyarı", MessageBoxButtons.OK, MessageBoxIcon.Warning);
             return;
         }
 
-        if (_cmbType.EditValue == null)
+        if (_cmbType.SelectedValue == null)
         {
-            XtraMessageBox.Show("Hesap türü seçiniz.", "Uyarı", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            MessageBox.Show("Hesap türü seçiniz.", "Uyarı", MessageBoxButtons.OK, MessageBoxIcon.Warning);
             return;
         }
 
@@ -130,20 +190,20 @@ public partial class AccountDialog : XtraForm
             using var unitOfWork = new UnitOfWork(context);
             var service = new AccountService(unitOfWork);
 
-            if (_account == null)
+            if (_accountId.HasValue)
             {
-                _account = new Account { UserId = _userId };
+                _account = await service.GetByIdAsync(_accountId.Value);
             }
             else
             {
-                _account = await service.GetByIdAsync(_accountId!.Value);
+                _account = new Account { UserId = _userId };
             }
 
             _account!.AccountName = _txtName.Text;
-            _account.AccountTypeId = (int)_cmbType.EditValue;
-            _account.CurrencyCode = _cmbCurrency.EditValue?.ToString() ?? "TRY";
-            _account.InitialBalance = (decimal)_txtInitialBalance.Value;
-            _account.CreditLimit = (decimal)_txtCreditLimit.Value;
+            _account.AccountTypeId = (int)_cmbType.SelectedValue;
+            _account.CurrencyCode = _cmbCurrency.SelectedItem?.ToString() ?? "TRY";
+            _account.InitialBalance = _txtInitialBalance.Value;
+            _account.CreditLimit = _txtCreditLimit.Value;
             _account.CutoffDay = (int)_txtCutoffDay.Value;
 
             if (_accountId.HasValue)
@@ -156,8 +216,7 @@ public partial class AccountDialog : XtraForm
         }
         catch (Exception ex)
         {
-            XtraMessageBox.Show($"Kayıt hatası: {ex.Message}", "Hata", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            MessageBox.Show($"Kayıt hatası: {ex.Message}", "Hata", MessageBoxButtons.OK, MessageBoxIcon.Error);
         }
     }
 }
-

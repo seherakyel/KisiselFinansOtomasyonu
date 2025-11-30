@@ -1,20 +1,16 @@
-using DevExpress.XtraEditors;
-using DevExpress.XtraGrid;
-using DevExpress.XtraGrid.Views.Grid;
-using DevExpress.XtraLayout;
 using KisiselFinans.Business.Services;
 using KisiselFinans.Core.Entities;
 using KisiselFinans.Data.Context;
 using KisiselFinans.Data.Repositories;
 using KisiselFinans.UI.Forms;
+using KisiselFinans.UI.Theme;
 
 namespace KisiselFinans.UI.Controls;
 
-public class ScheduledListControl : XtraUserControl
+public class ScheduledListControl : UserControl
 {
     private readonly int _userId;
-    private GridControl _grid = null!;
-    private GridView _gridView = null!;
+    private DataGridView _grid = null!;
 
     public ScheduledListControl(int userId)
     {
@@ -25,56 +21,81 @@ public class ScheduledListControl : XtraUserControl
 
     private void InitializeComponent()
     {
-        var layout = new LayoutControl { Dock = DockStyle.Fill };
-        Controls.Add(layout);
+        Dock = DockStyle.Fill;
+        BackColor = AppTheme.PrimaryDark;
+        Padding = new Padding(10);
 
-        var btnAdd = new SimpleButton { Text = "Yeni Planlı İşlem", Size = new Size(150, 30) };
+        var toolbar = new Panel
+        {
+            Dock = DockStyle.Top,
+            Height = 50,
+            BackColor = AppTheme.PrimaryDark
+        };
+
+        var btnAdd = new Button
+        {
+            Text = "➕ Yeni Planlı İşlem",
+            Location = new Point(0, 5),
+            Size = new Size(160, 35)
+        };
+        AppTheme.StyleSuccessButton(btnAdd);
         btnAdd.Click += (s, e) =>
         {
             using var dialog = new ScheduledTransactionDialog(_userId, null);
             if (dialog.ShowDialog() == DialogResult.OK)
                 _ = LoadDataAsync();
         };
-        layout.Root.AddItem(new LayoutControlItem { Control = btnAdd, TextVisible = false });
 
-        var btnExecute = new SimpleButton { Text = "Vadesi Gelenleri Uygula", Size = new Size(180, 30) };
-        btnExecute.Click += async (s, e) => await ExecuteScheduledAsync();
-        layout.Root.AddItem(new LayoutControlItem { Control = btnExecute, TextVisible = false });
-
-        _grid = new GridControl();
-        _gridView = new GridView(_grid);
-        _grid.MainView = _gridView;
-
-        _gridView.OptionsBehavior.Editable = false;
-        _gridView.OptionsView.ShowGroupPanel = false;
-
-        var gridItem = new LayoutControlItem { Control = _grid, TextVisible = false };
-        gridItem.SizeConstraintsType = SizeConstraintsType.Custom;
-        gridItem.MinSize = new Size(800, 500);
-        layout.Root.AddItem(gridItem);
-
-        _gridView.DoubleClick += (s, e) =>
+        var btnExecute = new Button
         {
-            if (_gridView.FocusedRowHandle >= 0 && _gridView.GetRow(_gridView.FocusedRowHandle) is ScheduledTransaction row)
+            Text = "▶️ Vadesi Gelenleri Uygula",
+            Location = new Point(170, 5),
+            Size = new Size(180, 35)
+        };
+        AppTheme.StyleButton(btnExecute, true);
+        btnExecute.Click += async (s, e) => await ExecuteScheduledAsync();
+
+        toolbar.Controls.AddRange(new Control[] { btnAdd, btnExecute });
+
+        _grid = new DataGridView
+        {
+            Dock = DockStyle.Fill,
+            ReadOnly = true,
+            AllowUserToAddRows = false,
+            AllowUserToDeleteRows = false
+        };
+        AppTheme.StyleDataGrid(_grid);
+
+        _grid.CellFormatting += (s, e) =>
+        {
+            if (_grid.Columns[e.ColumnIndex].Name == "SonrakiTarih")
             {
-                using var dialog = new ScheduledTransactionDialog(_userId, row.Id);
+                var dateValue = _grid.Rows[e.RowIndex].Cells[e.ColumnIndex].Value;
+                if (dateValue != null)
+                {
+                    var date = Convert.ToDateTime(dateValue);
+                    var daysLeft = (date - DateTime.Now).Days;
+                    if (daysLeft <= 0)
+                        e.CellStyle!.BackColor = Color.FromArgb(80, 244, 67, 54);
+                    else if (daysLeft <= 3)
+                        e.CellStyle!.BackColor = Color.FromArgb(80, 255, 152, 0);
+                }
+            }
+        };
+
+        _grid.CellDoubleClick += (s, e) =>
+        {
+            if (e.RowIndex >= 0)
+            {
+                var id = Convert.ToInt32(_grid.Rows[e.RowIndex].Cells["Id"].Value);
+                using var dialog = new ScheduledTransactionDialog(_userId, id);
                 if (dialog.ShowDialog() == DialogResult.OK)
                     _ = LoadDataAsync();
             }
         };
 
-        // Yaklaşan işlemler için renklendirme
-        _gridView.RowStyle += (s, e) =>
-        {
-            if (_gridView.GetRow(e.RowHandle) is ScheduledTransaction row)
-            {
-                var daysLeft = (row.NextExecutionDate - DateTime.Now).Days;
-                if (daysLeft <= 0)
-                    e.Appearance.BackColor = Color.FromArgb(255, 200, 200);
-                else if (daysLeft <= 3)
-                    e.Appearance.BackColor = Color.FromArgb(255, 240, 200);
-            }
-        };
+        Controls.Add(_grid);
+        Controls.Add(toolbar);
     }
 
     private async Task LoadDataAsync()
@@ -86,31 +107,40 @@ public class ScheduledListControl : XtraUserControl
             var service = new ScheduledTransactionService(unitOfWork);
 
             var scheduled = (await service.GetUserScheduledTransactionsAsync(_userId)).ToList();
-            _grid.DataSource = scheduled;
 
-            _gridView.PopulateColumns();
-            _gridView.Columns["Id"].Visible = false;
-            _gridView.Columns["UserId"].Visible = false;
-            _gridView.Columns["AccountId"].Visible = false;
-            _gridView.Columns["CategoryId"].Visible = false;
-            _gridView.Columns["User"].Visible = false;
+            var displayList = scheduled.Select(s => new
+            {
+                s.Id,
+                Hesap = s.Account?.AccountName ?? "-",
+                Kategori = s.Category?.CategoryName ?? "-",
+                Tutar = s.Amount,
+                Aciklama = s.Description,
+                Siklik = s.FrequencyType,
+                Gun = s.DayOfMonth,
+                SonrakiTarih = s.NextExecutionDate,
+                Aktif = s.IsActive ? "Evet" : "Hayır"
+            }).ToList();
 
-            _gridView.Columns["Account"].Caption = "Hesap";
-            _gridView.Columns["Category"].Caption = "Kategori";
-            _gridView.Columns["Amount"].Caption = "Tutar";
-            _gridView.Columns["Amount"].DisplayFormat.FormatString = "N2";
-            _gridView.Columns["Description"].Caption = "Açıklama";
-            _gridView.Columns["FrequencyType"].Caption = "Sıklık";
-            _gridView.Columns["DayOfMonth"].Caption = "Gün";
-            _gridView.Columns["NextExecutionDate"].Caption = "Sonraki Tarih";
-            _gridView.Columns["NextExecutionDate"].DisplayFormat.FormatString = "dd.MM.yyyy";
-            _gridView.Columns["IsActive"].Caption = "Aktif";
+            _grid.DataSource = displayList;
 
-            _gridView.BestFitColumns();
+            if (_grid.Columns.Count > 0)
+            {
+                _grid.Columns["Id"].Visible = false;
+                _grid.Columns["Hesap"].HeaderText = "Hesap";
+                _grid.Columns["Kategori"].HeaderText = "Kategori";
+                _grid.Columns["Tutar"].HeaderText = "Tutar";
+                _grid.Columns["Tutar"].DefaultCellStyle.Format = "N2";
+                _grid.Columns["Aciklama"].HeaderText = "Açıklama";
+                _grid.Columns["Siklik"].HeaderText = "Sıklık";
+                _grid.Columns["Gun"].HeaderText = "Gün";
+                _grid.Columns["SonrakiTarih"].HeaderText = "Sonraki Tarih";
+                _grid.Columns["SonrakiTarih"].DefaultCellStyle.Format = "dd.MM.yyyy";
+                _grid.Columns["Aktif"].HeaderText = "Aktif";
+            }
         }
         catch (Exception ex)
         {
-            XtraMessageBox.Show($"Veri yükleme hatası: {ex.Message}", "Hata", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            MessageBox.Show($"Veri yükleme hatası: {ex.Message}", "Hata", MessageBoxButtons.OK, MessageBoxIcon.Error);
         }
     }
 
@@ -123,15 +153,14 @@ public class ScheduledListControl : XtraUserControl
             var service = new ScheduledTransactionService(unitOfWork);
 
             await service.ExecuteScheduledTransactionsAsync();
-            XtraMessageBox.Show("Planlı işlemler uygulandı.", "Başarılı", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            MessageBox.Show("Planlı işlemler uygulandı.", "Başarılı", MessageBoxButtons.OK, MessageBoxIcon.Information);
             await LoadDataAsync();
         }
         catch (Exception ex)
         {
-            XtraMessageBox.Show($"Hata: {ex.Message}", "Hata", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            MessageBox.Show($"Hata: {ex.Message}", "Hata", MessageBoxButtons.OK, MessageBoxIcon.Error);
         }
     }
 
     public void RefreshData() => _ = LoadDataAsync();
 }
-

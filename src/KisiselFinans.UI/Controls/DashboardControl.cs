@@ -1,22 +1,21 @@
-using DevExpress.XtraCharts;
-using DevExpress.XtraEditors;
-using DevExpress.XtraGauges.Win;
-using DevExpress.XtraGauges.Win.Gauges.Circular;
-using DevExpress.XtraGauges.Win.Gauges.Linear;
-using DevExpress.XtraLayout;
 using KisiselFinans.Business.Services;
 using KisiselFinans.Core.DTOs;
 using KisiselFinans.Data.Context;
 using KisiselFinans.Data.Repositories;
+using KisiselFinans.UI.Theme;
+using ScottPlot;
+using ScottPlot.WinForms;
+using SysColor = System.Drawing.Color;
+using WinLabel = System.Windows.Forms.Label;
 
 namespace KisiselFinans.UI.Controls;
 
-public class DashboardControl : XtraUserControl
+public class DashboardControl : UserControl
 {
     private readonly int _userId;
     private DashboardSummaryDto? _summary;
     private ForecastDto? _forecast;
-    private LayoutControl _layoutControl = null!;
+    private FlowLayoutPanel _mainLayout = null!;
 
     public DashboardControl(int userId)
     {
@@ -27,16 +26,30 @@ public class DashboardControl : XtraUserControl
 
     private void InitializeComponent()
     {
-        _layoutControl = new LayoutControl { Dock = DockStyle.Fill };
-        Controls.Add(_layoutControl);
+        Dock = DockStyle.Fill;
+        BackColor = AppTheme.PrimaryDark;
+        AutoScroll = true;
 
-        var lblLoading = new LabelControl
+        _mainLayout = new FlowLayoutPanel
         {
-            Text = "Veriler yükleniyor...",
             Dock = DockStyle.Fill,
-            Appearance = { TextOptions = { HAlignment = DevExpress.Utils.HorzAlignment.Center, VAlignment = DevExpress.Utils.VertAlignment.Center } }
+            AutoScroll = true,
+            FlowDirection = FlowDirection.LeftToRight,
+            WrapContents = true,
+            Padding = new Padding(10)
         };
-        Controls.Add(lblLoading);
+
+        var lblLoading = new WinLabel
+        {
+            Text = "⏳ Veriler yükleniyor...",
+            Font = AppTheme.FontSubtitle,
+            ForeColor = AppTheme.TextSecondary,
+            Dock = DockStyle.Fill,
+            TextAlign = ContentAlignment.MiddleCenter
+        };
+        _mainLayout.Controls.Add(lblLoading);
+
+        Controls.Add(_mainLayout);
     }
 
     private async Task LoadDataAsync()
@@ -53,184 +66,375 @@ public class DashboardControl : XtraUserControl
             _summary = await dashboardService.GetDashboardSummaryAsync(_userId);
             _forecast = await dashboardService.GetForecastAsync(_userId);
 
-            BeginInvoke(() => BuildDashboard());
+            BeginInvoke(BuildDashboard);
         }
         catch (Exception ex)
         {
-            BeginInvoke(() => XtraMessageBox.Show($"Veri yükleme hatası: {ex.Message}", "Hata", MessageBoxButtons.OK, MessageBoxIcon.Error));
+            BeginInvoke(() => MessageBox.Show($"Veri yükleme hatası: {ex.Message}", "Hata", MessageBoxButtons.OK, MessageBoxIcon.Error));
         }
     }
 
     private void BuildDashboard()
     {
-        Controls.Clear();
-        _layoutControl = new LayoutControl { Dock = DockStyle.Fill };
-        Controls.Add(_layoutControl);
-
-        var root = _layoutControl.Root;
-        root.Padding = new DevExpress.XtraLayout.Utils.Padding(10);
+        _mainLayout.Controls.Clear();
 
         // Özet Kartları
-        var summaryGroup = new LayoutControlGroup { Text = "Aylık Özet", Padding = new DevExpress.XtraLayout.Utils.Padding(5) };
-        root.AddItem(summaryGroup);
+        AddSummaryCard("💵 Aylık Gelir", _summary!.TotalIncome, AppTheme.AccentGreen);
+        AddSummaryCard("💸 Aylık Gider", _summary.TotalExpense, AppTheme.AccentRed);
+        AddSummaryCard("📊 Net Bakiye", _summary.NetBalance, _summary.NetBalance >= 0 ? AppTheme.AccentGreen : AppTheme.AccentRed);
+        AddSummaryCard("🏦 Toplam Varlık", _summary.NetWorth, AppTheme.AccentBlue);
 
-        AddSummaryCard(summaryGroup, "Gelir", _summary!.TotalIncome, Color.FromArgb(40, 167, 69));
-        AddSummaryCard(summaryGroup, "Gider", _summary.TotalExpense, Color.FromArgb(220, 53, 69));
-        AddSummaryCard(summaryGroup, "Net", _summary.NetBalance, _summary.NetBalance >= 0 ? Color.FromArgb(40, 167, 69) : Color.FromArgb(220, 53, 69));
-        AddSummaryCard(summaryGroup, "Toplam Varlık", _summary.NetWorth, Color.FromArgb(0, 123, 255));
+        // Tahmin Kartı
+        AddForecastCard();
 
-        // Gauge - Bütçe Durumu
-        var gaugeGroup = new LayoutControlGroup { Text = "Bütçe Durumu", Padding = new DevExpress.XtraLayout.Utils.Padding(5) };
-        root.AddItem(gaugeGroup);
+        // Pasta Grafik
+        AddPieChart();
 
-        foreach (var budget in _summary.BudgetStatuses.Take(3))
-        {
-            var gauge = CreateBudgetGauge(budget);
-            var item = new LayoutControlItem { Control = gauge, TextVisible = false };
-            gaugeGroup.AddItem(item);
-        }
-
-        // Pasta Grafik - Kategori Dağılımı
-        var pieChart = CreatePieChart();
-        var pieItem = new LayoutControlItem { Control = pieChart, Text = "Kategori Dağılımı" };
-        pieItem.SizeConstraintsType = SizeConstraintsType.Custom;
-        pieItem.MinSize = new Size(400, 300);
-        root.AddItem(pieItem);
-
-        // Çizgi Grafik - Aylık Trend
-        var lineChart = CreateLineChart();
-        var lineItem = new LayoutControlItem { Control = lineChart, Text = "Aylık Trend" };
-        lineItem.SizeConstraintsType = SizeConstraintsType.Custom;
-        lineItem.MinSize = new Size(500, 300);
-        root.AddItem(lineItem);
+        // Çizgi Grafik
+        AddLineChart();
 
         // Hesap Bakiyeleri
-        var accountGroup = new LayoutControlGroup { Text = "Hesap Bakiyeleri", Padding = new DevExpress.XtraLayout.Utils.Padding(5) };
-        root.AddItem(accountGroup);
+        AddAccountsList();
 
-        foreach (var account in _summary.AccountBalances)
-        {
-            var lbl = new LabelControl { Text = $"{account.AccountName}: {account.Balance:N2} {account.CurrencyCode}" };
-            lbl.Appearance.Font = new Font("Segoe UI", 11);
-            var item = new LayoutControlItem { Control = lbl, TextVisible = false };
-            accountGroup.AddItem(item);
-        }
-
-        // Tahmin
-        var forecastGroup = new LayoutControlGroup { Text = "Ay Sonu Tahmini", Padding = new DevExpress.XtraLayout.Utils.Padding(5) };
-        root.AddItem(forecastGroup);
-
-        var lblForecast = new LabelControl
-        {
-            Text = $"Tahmini Bakiye: {_forecast!.ProjectedEndOfMonthBalance:N2} TRY\n" +
-                   $"Günlük Ortalama Harcama: {_forecast.AverageDailySpending:N2} TRY\n" +
-                   $"Kalan Gün: {_forecast.DaysRemaining}"
-        };
-        lblForecast.Appearance.Font = new Font("Segoe UI", 11);
-        forecastGroup.AddItem(new LayoutControlItem { Control = lblForecast, TextVisible = false });
+        // Bütçe Durumu
+        AddBudgetsList();
 
         // Yaklaşan İşlemler
-        var upcomingGroup = new LayoutControlGroup { Text = "Yaklaşan İşlemler (7 gün)", Padding = new DevExpress.XtraLayout.Utils.Padding(5) };
-        root.AddItem(upcomingGroup);
-
-        foreach (var upcoming in _summary.UpcomingTransactions.Take(5))
-        {
-            var lbl = new LabelControl
-            {
-                Text = $"📅 {upcoming.DueDate:dd.MM} - {upcoming.Description}: {upcoming.Amount:N2} TRY"
-            };
-            upcomingGroup.AddItem(new LayoutControlItem { Control = lbl, TextVisible = false });
-        }
+        AddUpcomingList();
     }
 
-    private void AddSummaryCard(LayoutControlGroup group, string title, decimal amount, Color color)
+    private void AddSummaryCard(string title, decimal amount, SysColor accentColor)
     {
-        var panel = new PanelControl { Size = new Size(180, 80) };
-        panel.Appearance.BackColor = color;
-        panel.Appearance.Options.UseBackColor = true;
+        var card = new Panel
+        {
+            Size = new Size(260, 100),
+            BackColor = AppTheme.PrimaryMedium,
+            Margin = new Padding(10),
+            Padding = new Padding(15)
+        };
 
-        var lblTitle = new LabelControl
+        var stripe = new Panel
+        {
+            Size = new Size(5, 100),
+            BackColor = accentColor,
+            Dock = DockStyle.Left
+        };
+
+        var lblTitle = new WinLabel
         {
             Text = title,
-            Location = new Point(10, 10),
-            Appearance = { ForeColor = Color.White, Font = new Font("Segoe UI", 10) }
+            Font = AppTheme.FontSmall,
+            ForeColor = AppTheme.TextSecondary,
+            Location = new Point(20, 15),
+            AutoSize = true
         };
 
-        var lblAmount = new LabelControl
+        var lblAmount = new WinLabel
         {
-            Text = $"{amount:N2} ₺",
-            Location = new Point(10, 35),
-            Appearance = { ForeColor = Color.White, Font = new Font("Segoe UI", 16, FontStyle.Bold) }
+            Text = $"₺ {amount:N2}",
+            Font = new Font("Segoe UI Semibold", 22),
+            ForeColor = AppTheme.TextPrimary,
+            Location = new Point(20, 45),
+            AutoSize = true
         };
 
-        panel.Controls.AddRange(new Control[] { lblTitle, lblAmount });
-
-        var item = new LayoutControlItem { Control = panel, TextVisible = false };
-        item.SizeConstraintsType = SizeConstraintsType.Custom;
-        item.MinSize = new Size(190, 90);
-        item.MaxSize = new Size(200, 100);
-        group.AddItem(item);
+        card.Controls.AddRange(new Control[] { stripe, lblTitle, lblAmount });
+        _mainLayout.Controls.Add(card);
     }
 
-    private GaugeControl CreateBudgetGauge(BudgetStatusDto budget)
+    private void AddForecastCard()
     {
-        var gaugeControl = new GaugeControl { Size = new Size(150, 150) };
-        var circularGauge = gaugeControl.AddCircularGauge();
-
-        circularGauge.AddScale().Labels.Add(new ArcScaleLabel());
-        var scale = circularGauge.Scales[0];
-        scale.MinValue = 0;
-        scale.MaxValue = 100;
-        scale.Value = (float)Math.Min(budget.Percentage, 100);
-
-        scale.AppearanceScale.Brush = new DevExpress.XtraGauges.Core.Drawing.SolidBrushObject(
-            budget.Percentage > 90 ? Color.Red : budget.Percentage > 70 ? Color.Orange : Color.Green);
-
-        var label = new LabelComponent { Text = $"{budget.CategoryName}\n{budget.Percentage:F0}%" };
-        circularGauge.Labels.Add(label);
-
-        return gaugeControl;
-    }
-
-    private ChartControl CreatePieChart()
-    {
-        var chart = new ChartControl { Size = new Size(400, 300) };
-        var series = new Series("Kategoriler", ViewType.Pie);
-
-        foreach (var cat in _summary!.CategorySpendings.Take(8))
+        var card = new Panel
         {
-            series.Points.Add(new SeriesPoint(cat.CategoryName, (double)cat.Amount));
+            Size = new Size(540, 100),
+            BackColor = AppTheme.PrimaryMedium,
+            Margin = new Padding(10),
+            Padding = new Padding(15)
+        };
+
+        var stripe = new Panel
+        {
+            Size = new Size(5, 100),
+            BackColor = AppTheme.AccentPurple,
+            Dock = DockStyle.Left
+        };
+
+        var lblTitle = new WinLabel
+        {
+            Text = "🔮 Ay Sonu Tahmini",
+            Font = AppTheme.FontSmall,
+            ForeColor = AppTheme.TextSecondary,
+            Location = new Point(20, 10),
+            AutoSize = true
+        };
+
+        var lblForecast = new WinLabel
+        {
+            Text = $"Tahmini Bakiye: ₺ {_forecast!.ProjectedEndOfMonthBalance:N2}   |   " +
+                   $"Günlük Ort. Harcama: ₺ {_forecast.AverageDailySpending:N2}   |   " +
+                   $"Kalan Gün: {_forecast.DaysRemaining}",
+            Font = AppTheme.FontBody,
+            ForeColor = AppTheme.TextPrimary,
+            Location = new Point(20, 40),
+            AutoSize = true
+        };
+
+        card.Controls.AddRange(new Control[] { stripe, lblTitle, lblForecast });
+        _mainLayout.Controls.Add(card);
+    }
+
+    private void AddPieChart()
+    {
+        var card = new Panel
+        {
+            Size = new Size(400, 320),
+            BackColor = AppTheme.PrimaryMedium,
+            Margin = new Padding(10),
+            Padding = new Padding(15)
+        };
+
+        var lblTitle = new WinLabel
+        {
+            Text = "🥧 Kategori Dağılımı",
+            Font = AppTheme.FontSubtitle,
+            ForeColor = AppTheme.TextPrimary,
+            Dock = DockStyle.Top,
+            Height = 30
+        };
+
+        var plotView = new FormsPlot
+        {
+            Dock = DockStyle.Fill
+        };
+
+        var values = _summary!.CategorySpendings.Take(6).Select(c => (double)c.Amount).ToArray();
+        var labels = _summary.CategorySpendings.Take(6).Select(c => c.CategoryName).ToArray();
+
+        if (values.Length > 0)
+        {
+            var pie = plotView.Plot.Add.Pie(values);
+            pie.ExplodeFraction = 0.05;
+            pie.SliceLabelDistance = 1.2;
+            
+            for (int i = 0; i < Math.Min(pie.Slices.Count, labels.Length); i++)
+            {
+                pie.Slices[i].Label = labels[i];
+                pie.Slices[i].LabelFontColor = ScottPlot.Color.FromHex("#FFFFFF");
+            }
+
+            plotView.Plot.FigureBackground.Color = ScottPlot.Color.FromHex("#1E1E1E");
+            plotView.Plot.DataBackground.Color = ScottPlot.Color.FromHex("#1E1E1E");
+            plotView.Plot.HideAxesAndGrid();
+            plotView.Refresh();
         }
 
-        ((PieSeriesView)series.View).ExplodeMode = PieExplodeMode.UsePoints;
-        chart.Series.Add(series);
-        chart.Legend.Visibility = DevExpress.Utils.DefaultBoolean.True;
-
-        return chart;
+        card.Controls.Add(plotView);
+        card.Controls.Add(lblTitle);
+        _mainLayout.Controls.Add(card);
     }
 
-    private ChartControl CreateLineChart()
+    private void AddLineChart()
     {
-        var chart = new ChartControl { Size = new Size(500, 300) };
-
-        var seriesIncome = new Series("Gelir", ViewType.Line);
-        var seriesExpense = new Series("Gider", ViewType.Line);
-
-        foreach (var trend in _summary!.MonthlyTrends)
+        var card = new Panel
         {
-            seriesIncome.Points.Add(new SeriesPoint(trend.MonthName, (double)trend.Income));
-            seriesExpense.Points.Add(new SeriesPoint(trend.MonthName, (double)trend.Expense));
+            Size = new Size(500, 320),
+            BackColor = AppTheme.PrimaryMedium,
+            Margin = new Padding(10),
+            Padding = new Padding(15)
+        };
+
+        var lblTitle = new WinLabel
+        {
+            Text = "📈 Aylık Trend",
+            Font = AppTheme.FontSubtitle,
+            ForeColor = AppTheme.TextPrimary,
+            Dock = DockStyle.Top,
+            Height = 30
+        };
+
+        var plotView = new FormsPlot
+        {
+            Dock = DockStyle.Fill
+        };
+
+        var incomeData = _summary!.MonthlyTrends.Select(t => (double)t.Income).ToArray();
+        var expenseData = _summary.MonthlyTrends.Select(t => (double)t.Expense).ToArray();
+        var months = _summary.MonthlyTrends.Select(t => t.MonthName).ToArray();
+
+        if (incomeData.Length > 0)
+        {
+            double[] xs = Enumerable.Range(0, incomeData.Length).Select(i => (double)i).ToArray();
+
+            var incomeLine = plotView.Plot.Add.Scatter(xs, incomeData);
+            incomeLine.Color = ScottPlot.Color.FromHex("#4CAF50");
+            incomeLine.LineWidth = 3;
+            incomeLine.LegendText = "Gelir";
+
+            var expenseLine = plotView.Plot.Add.Scatter(xs, expenseData);
+            expenseLine.Color = ScottPlot.Color.FromHex("#F44336");
+            expenseLine.LineWidth = 3;
+            expenseLine.LegendText = "Gider";
+
+            plotView.Plot.Axes.Bottom.TickGenerator = new ScottPlot.TickGenerators.NumericManual(
+                xs.Select((x, i) => new ScottPlot.Tick(x, months[i])).ToArray()
+            );
+
+            plotView.Plot.FigureBackground.Color = ScottPlot.Color.FromHex("#1E1E1E");
+            plotView.Plot.DataBackground.Color = ScottPlot.Color.FromHex("#2D2D2D");
+            plotView.Plot.Axes.Color(ScottPlot.Color.FromHex("#B4B4B4"));
+            plotView.Plot.Grid.MajorLineColor = ScottPlot.Color.FromHex("#3D3D3D");
+            plotView.Plot.ShowLegend(Alignment.UpperRight);
+            plotView.Refresh();
         }
 
-        ((LineSeriesView)seriesIncome.View).Color = Color.Green;
-        ((LineSeriesView)seriesExpense.View).Color = Color.Red;
+        card.Controls.Add(plotView);
+        card.Controls.Add(lblTitle);
+        _mainLayout.Controls.Add(card);
+    }
 
-        chart.Series.AddRange(new[] { seriesIncome, seriesExpense });
-        chart.Legend.Visibility = DevExpress.Utils.DefaultBoolean.True;
+    private void AddAccountsList()
+    {
+        var card = new Panel
+        {
+            Size = new Size(350, 200),
+            BackColor = AppTheme.PrimaryMedium,
+            Margin = new Padding(10),
+            Padding = new Padding(15)
+        };
 
-        return chart;
+        var lblTitle = new WinLabel
+        {
+            Text = "🏦 Hesap Bakiyeleri",
+            Font = AppTheme.FontSubtitle,
+            ForeColor = AppTheme.TextPrimary,
+            Dock = DockStyle.Top,
+            Height = 30
+        };
+
+        var listPanel = new FlowLayoutPanel
+        {
+            Dock = DockStyle.Fill,
+            FlowDirection = FlowDirection.TopDown,
+            AutoScroll = true
+        };
+
+        foreach (var account in _summary!.AccountBalances.Take(5))
+        {
+            var row = new WinLabel
+            {
+                Text = $"{account.AccountName}: ₺ {account.Balance:N2}",
+                Font = AppTheme.FontBody,
+                ForeColor = account.Balance >= 0 ? AppTheme.TextPrimary : AppTheme.AccentRed,
+                AutoSize = true,
+                Margin = new Padding(0, 5, 0, 5)
+            };
+            listPanel.Controls.Add(row);
+        }
+
+        card.Controls.Add(listPanel);
+        card.Controls.Add(lblTitle);
+        _mainLayout.Controls.Add(card);
+    }
+
+    private void AddBudgetsList()
+    {
+        var card = new Panel
+        {
+            Size = new Size(350, 200),
+            BackColor = AppTheme.PrimaryMedium,
+            Margin = new Padding(10),
+            Padding = new Padding(15)
+        };
+
+        var lblTitle = new WinLabel
+        {
+            Text = "🎯 Bütçe Durumu",
+            Font = AppTheme.FontSubtitle,
+            ForeColor = AppTheme.TextPrimary,
+            Dock = DockStyle.Top,
+            Height = 30
+        };
+
+        var listPanel = new FlowLayoutPanel
+        {
+            Dock = DockStyle.Fill,
+            FlowDirection = FlowDirection.TopDown,
+            AutoScroll = true
+        };
+
+        foreach (var budget in _summary!.BudgetStatuses.Take(4))
+        {
+            var pnl = new Panel { Size = new Size(300, 35), Margin = new Padding(0, 3, 0, 3) };
+
+            var lbl = new WinLabel
+            {
+                Text = $"{budget.CategoryName}: {budget.Percentage:F0}%",
+                Font = AppTheme.FontSmall,
+                ForeColor = AppTheme.TextPrimary,
+                Location = new Point(0, 0),
+                AutoSize = true
+            };
+
+            var progress = new ProgressBar
+            {
+                Location = new Point(0, 18),
+                Size = new Size(300, 12),
+                Value = Math.Min((int)budget.Percentage, 100),
+                Style = ProgressBarStyle.Continuous
+            };
+
+            pnl.Controls.AddRange(new Control[] { lbl, progress });
+            listPanel.Controls.Add(pnl);
+        }
+
+        card.Controls.Add(listPanel);
+        card.Controls.Add(lblTitle);
+        _mainLayout.Controls.Add(card);
+    }
+
+    private void AddUpcomingList()
+    {
+        var card = new Panel
+        {
+            Size = new Size(350, 200),
+            BackColor = AppTheme.PrimaryMedium,
+            Margin = new Padding(10),
+            Padding = new Padding(15)
+        };
+
+        var lblTitle = new WinLabel
+        {
+            Text = "📅 Yaklaşan İşlemler",
+            Font = AppTheme.FontSubtitle,
+            ForeColor = AppTheme.TextPrimary,
+            Dock = DockStyle.Top,
+            Height = 30
+        };
+
+        var listPanel = new FlowLayoutPanel
+        {
+            Dock = DockStyle.Fill,
+            FlowDirection = FlowDirection.TopDown,
+            AutoScroll = true
+        };
+
+        foreach (var upcoming in _summary!.UpcomingTransactions.Take(5))
+        {
+            var row = new WinLabel
+            {
+                Text = $"📌 {upcoming.DueDate:dd.MM} - {upcoming.Description}: ₺ {upcoming.Amount:N2}",
+                Font = AppTheme.FontSmall,
+                ForeColor = AppTheme.TextPrimary,
+                AutoSize = true,
+                Margin = new Padding(0, 4, 0, 4)
+            };
+            listPanel.Controls.Add(row);
+        }
+
+        card.Controls.Add(listPanel);
+        card.Controls.Add(lblTitle);
+        _mainLayout.Controls.Add(card);
     }
 
     public void RefreshData() => _ = LoadDataAsync();
 }
-

@@ -1,20 +1,16 @@
-using DevExpress.XtraEditors;
-using DevExpress.XtraGrid;
-using DevExpress.XtraGrid.Views.Grid;
-using DevExpress.XtraLayout;
 using KisiselFinans.Business.Services;
 using KisiselFinans.Core.Entities;
 using KisiselFinans.Data.Context;
 using KisiselFinans.Data.Repositories;
 using KisiselFinans.UI.Forms;
+using KisiselFinans.UI.Theme;
 
 namespace KisiselFinans.UI.Controls;
 
-public class AccountListControl : XtraUserControl
+public class AccountListControl : UserControl
 {
     private readonly int _userId;
-    private GridControl _grid = null!;
-    private GridView _gridView = null!;
+    private DataGridView _grid = null!;
     private List<Account> _accounts = new();
 
     public AccountListControl(int userId)
@@ -26,44 +22,59 @@ public class AccountListControl : XtraUserControl
 
     private void InitializeComponent()
     {
-        var layout = new LayoutControl { Dock = DockStyle.Fill };
-        Controls.Add(layout);
+        Dock = DockStyle.Fill;
+        BackColor = AppTheme.PrimaryDark;
+        Padding = new Padding(10);
 
-        var btnAdd = new SimpleButton { Text = "Yeni Hesap Ekle", Size = new Size(150, 30) };
-        btnAdd.Click += (s, e) => ShowAccountDialog(null);
-        layout.Root.AddItem(new LayoutControlItem { Control = btnAdd, TextVisible = false });
-
-        _grid = new GridControl();
-        _gridView = new GridView(_grid);
-        _grid.MainView = _gridView;
-
-        _gridView.OptionsBehavior.Editable = false;
-        _gridView.OptionsView.ShowGroupPanel = false;
-
-        var gridItem = new LayoutControlItem { Control = _grid, TextVisible = false };
-        gridItem.SizeConstraintsType = SizeConstraintsType.Custom;
-        gridItem.MinSize = new Size(800, 500);
-        layout.Root.AddItem(gridItem);
-
-        _gridView.DoubleClick += (s, e) =>
+        var toolbar = new Panel
         {
-            if (_gridView.FocusedRowHandle >= 0 && _gridView.GetRow(_gridView.FocusedRowHandle) is Account row)
+            Dock = DockStyle.Top,
+            Height = 50,
+            BackColor = AppTheme.PrimaryDark
+        };
+
+        var btnAdd = new Button
+        {
+            Text = "➕ Yeni Hesap Ekle",
+            Location = new Point(0, 5),
+            Size = new Size(150, 35)
+        };
+        AppTheme.StyleSuccessButton(btnAdd);
+        btnAdd.Click += (s, e) => ShowAccountDialog(null);
+
+        toolbar.Controls.Add(btnAdd);
+
+        _grid = new DataGridView
+        {
+            Dock = DockStyle.Fill,
+            ReadOnly = true,
+            AllowUserToAddRows = false,
+            AllowUserToDeleteRows = false
+        };
+        AppTheme.StyleDataGrid(_grid);
+
+        _grid.CellFormatting += (s, e) =>
+        {
+            if (_grid.Columns[e.ColumnIndex].Name == "CurrentBalance")
+            {
+                var row = _grid.Rows[e.RowIndex].DataBoundItem as Account;
+                if (row != null && row.CurrentBalance < 0)
+                {
+                    e.CellStyle!.ForeColor = AppTheme.AccentRed;
+                }
+            }
+        };
+
+        _grid.CellDoubleClick += (s, e) =>
+        {
+            if (e.RowIndex >= 0 && _grid.Rows[e.RowIndex].DataBoundItem is Account row)
             {
                 ShowAccountDialog(row.Id);
             }
         };
 
-        // Bakiye renklendirme
-        _gridView.RowStyle += (s, e) =>
-        {
-            if (_gridView.GetRow(e.RowHandle) is Account row)
-            {
-                if (row.CurrentBalance < 0)
-                    e.Appearance.ForeColor = Color.Red;
-                else if (row.AccountTypeId == 3 && row.CurrentBalance > row.CreditLimit * 0.9m)
-                    e.Appearance.ForeColor = Color.Orange;
-            }
-        };
+        Controls.Add(_grid);
+        Controls.Add(toolbar);
     }
 
     private async Task LoadDataAsync()
@@ -75,33 +86,41 @@ public class AccountListControl : XtraUserControl
             var service = new AccountService(unitOfWork);
 
             _accounts = (await service.GetUserAccountsAsync(_userId)).ToList();
-            _grid.DataSource = _accounts;
 
-            _gridView.PopulateColumns();
-            _gridView.Columns["Id"].Visible = false;
-            _gridView.Columns["UserId"].Visible = false;
-            _gridView.Columns["AccountTypeId"].Visible = false;
-            _gridView.Columns["User"].Visible = false;
-            _gridView.Columns["Transactions"].Visible = false;
-            _gridView.Columns["ScheduledTransactions"].Visible = false;
+            var displayList = _accounts.Select(a => new
+            {
+                a.Id,
+                a.AccountName,
+                HesapTuru = a.AccountType?.TypeName ?? "-",
+                a.CurrencyCode,
+                BaslangicBakiye = a.InitialBalance,
+                MevcutBakiye = a.CurrentBalance,
+                KrediLimiti = a.CreditLimit,
+                KesimGunu = a.CutoffDay,
+                Aktif = a.IsActive ? "Evet" : "Hayır"
+            }).ToList();
 
-            _gridView.Columns["AccountName"].Caption = "Hesap Adı";
-            _gridView.Columns["AccountType"].Caption = "Hesap Türü";
-            _gridView.Columns["CurrencyCode"].Caption = "Para Birimi";
-            _gridView.Columns["InitialBalance"].Caption = "Başlangıç Bakiyesi";
-            _gridView.Columns["InitialBalance"].DisplayFormat.FormatString = "N2";
-            _gridView.Columns["CurrentBalance"].Caption = "Mevcut Bakiye";
-            _gridView.Columns["CurrentBalance"].DisplayFormat.FormatString = "N2";
-            _gridView.Columns["CreditLimit"].Caption = "Kredi Limiti";
-            _gridView.Columns["CreditLimit"].DisplayFormat.FormatString = "N2";
-            _gridView.Columns["CutoffDay"].Caption = "Hesap Kesim Günü";
-            _gridView.Columns["IsActive"].Caption = "Aktif";
+            _grid.DataSource = displayList;
 
-            _gridView.BestFitColumns();
+            if (_grid.Columns.Count > 0)
+            {
+                _grid.Columns["Id"].Visible = false;
+                _grid.Columns["AccountName"].HeaderText = "Hesap Adı";
+                _grid.Columns["HesapTuru"].HeaderText = "Hesap Türü";
+                _grid.Columns["CurrencyCode"].HeaderText = "Para Birimi";
+                _grid.Columns["BaslangicBakiye"].HeaderText = "Başlangıç";
+                _grid.Columns["BaslangicBakiye"].DefaultCellStyle.Format = "N2";
+                _grid.Columns["MevcutBakiye"].HeaderText = "Mevcut Bakiye";
+                _grid.Columns["MevcutBakiye"].DefaultCellStyle.Format = "N2";
+                _grid.Columns["KrediLimiti"].HeaderText = "Kredi Limiti";
+                _grid.Columns["KrediLimiti"].DefaultCellStyle.Format = "N2";
+                _grid.Columns["KesimGunu"].HeaderText = "Kesim Günü";
+                _grid.Columns["Aktif"].HeaderText = "Aktif";
+            }
         }
         catch (Exception ex)
         {
-            XtraMessageBox.Show($"Veri yükleme hatası: {ex.Message}", "Hata", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            MessageBox.Show($"Veri yükleme hatası: {ex.Message}", "Hata", MessageBoxButtons.OK, MessageBoxIcon.Error);
         }
     }
 
@@ -116,4 +135,3 @@ public class AccountListControl : XtraUserControl
 
     public void RefreshData() => _ = LoadDataAsync();
 }
-

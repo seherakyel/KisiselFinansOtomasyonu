@@ -1,20 +1,16 @@
-using DevExpress.XtraEditors;
-using DevExpress.XtraGrid;
-using DevExpress.XtraGrid.Views.Grid;
-using DevExpress.XtraLayout;
 using KisiselFinans.Business.Services;
 using KisiselFinans.Core.Entities;
 using KisiselFinans.Data.Context;
 using KisiselFinans.Data.Repositories;
 using KisiselFinans.UI.Forms;
+using KisiselFinans.UI.Theme;
 
 namespace KisiselFinans.UI.Controls;
 
-public class CategoryListControl : XtraUserControl
+public class CategoryListControl : UserControl
 {
     private readonly int _userId;
-    private GridControl _grid = null!;
-    private GridView _gridView = null!;
+    private DataGridView _grid = null!;
 
     public CategoryListControl(int userId)
     {
@@ -25,47 +21,64 @@ public class CategoryListControl : XtraUserControl
 
     private void InitializeComponent()
     {
-        var layout = new LayoutControl { Dock = DockStyle.Fill };
-        Controls.Add(layout);
+        Dock = DockStyle.Fill;
+        BackColor = AppTheme.PrimaryDark;
+        Padding = new Padding(10);
 
-        var btnAdd = new SimpleButton { Text = "Yeni Kategori", Size = new Size(150, 30) };
+        var toolbar = new Panel
+        {
+            Dock = DockStyle.Top,
+            Height = 50,
+            BackColor = AppTheme.PrimaryDark
+        };
+
+        var btnAdd = new Button
+        {
+            Text = "➕ Yeni Kategori",
+            Location = new Point(0, 5),
+            Size = new Size(140, 35)
+        };
+        AppTheme.StyleSuccessButton(btnAdd);
         btnAdd.Click += (s, e) =>
         {
             using var dialog = new CategoryDialog(_userId, null);
             if (dialog.ShowDialog() == DialogResult.OK)
                 _ = LoadDataAsync();
         };
-        layout.Root.AddItem(new LayoutControlItem { Control = btnAdd, TextVisible = false });
 
-        _grid = new GridControl();
-        _gridView = new GridView(_grid);
-        _grid.MainView = _gridView;
+        toolbar.Controls.Add(btnAdd);
 
-        _gridView.OptionsBehavior.Editable = false;
-        _gridView.OptionsView.ShowGroupPanel = false;
-
-        var gridItem = new LayoutControlItem { Control = _grid, TextVisible = false };
-        gridItem.SizeConstraintsType = SizeConstraintsType.Custom;
-        gridItem.MinSize = new Size(800, 500);
-        layout.Root.AddItem(gridItem);
-
-        _gridView.DoubleClick += (s, e) =>
+        _grid = new DataGridView
         {
-            if (_gridView.FocusedRowHandle >= 0 && _gridView.GetRow(_gridView.FocusedRowHandle) is Category row)
+            Dock = DockStyle.Fill,
+            ReadOnly = true,
+            AllowUserToAddRows = false,
+            AllowUserToDeleteRows = false
+        };
+        AppTheme.StyleDataGrid(_grid);
+
+        _grid.CellFormatting += (s, e) =>
+        {
+            if (_grid.Columns[e.ColumnIndex].Name == "Tur")
             {
-                using var dialog = new CategoryDialog(_userId, row.Id);
+                var value = _grid.Rows[e.RowIndex].Cells[e.ColumnIndex].Value?.ToString();
+                e.CellStyle!.ForeColor = value == "Gelir" ? AppTheme.AccentGreen : AppTheme.AccentRed;
+            }
+        };
+
+        _grid.CellDoubleClick += (s, e) =>
+        {
+            if (e.RowIndex >= 0)
+            {
+                var id = Convert.ToInt32(_grid.Rows[e.RowIndex].Cells["Id"].Value);
+                using var dialog = new CategoryDialog(_userId, id);
                 if (dialog.ShowDialog() == DialogResult.OK)
                     _ = LoadDataAsync();
             }
         };
 
-        _gridView.RowStyle += (s, e) =>
-        {
-            if (_gridView.GetRow(e.RowHandle) is Category row)
-            {
-                e.Appearance.ForeColor = row.Type == 1 ? Color.Green : Color.Red;
-            }
-        };
+        Controls.Add(_grid);
+        Controls.Add(toolbar);
     }
 
     private async Task LoadDataAsync()
@@ -77,31 +90,30 @@ public class CategoryListControl : XtraUserControl
             var service = new CategoryService(unitOfWork);
 
             var categories = (await service.GetUserCategoriesAsync(_userId)).ToList();
-            _grid.DataSource = categories;
 
-            _gridView.PopulateColumns();
-            _gridView.Columns["Id"].Visible = false;
-            _gridView.Columns["UserId"].Visible = false;
-            _gridView.Columns["ParentId"].Visible = false;
-            _gridView.Columns["User"].Visible = false;
-            _gridView.Columns["ParentCategory"].Visible = false;
-            _gridView.Columns["SubCategories"].Visible = false;
-            _gridView.Columns["Transactions"].Visible = false;
-            _gridView.Columns["Budgets"].Visible = false;
-            _gridView.Columns["ScheduledTransactions"].Visible = false;
+            var displayList = categories.Select(c => new
+            {
+                c.Id,
+                KategoriAdi = c.CategoryName,
+                Tur = c.Type == 1 ? "Gelir" : "Gider",
+                Ikon = c.IconIndex
+            }).ToList();
 
-            _gridView.Columns["CategoryName"].Caption = "Kategori Adı";
-            _gridView.Columns["Type"].Caption = "Tür";
-            _gridView.Columns["IconIndex"].Caption = "İkon";
+            _grid.DataSource = displayList;
 
-            _gridView.BestFitColumns();
+            if (_grid.Columns.Count > 0)
+            {
+                _grid.Columns["Id"].Visible = false;
+                _grid.Columns["KategoriAdi"].HeaderText = "Kategori Adı";
+                _grid.Columns["Tur"].HeaderText = "Tür";
+                _grid.Columns["Ikon"].HeaderText = "İkon";
+            }
         }
         catch (Exception ex)
         {
-            XtraMessageBox.Show($"Veri yükleme hatası: {ex.Message}", "Hata", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            MessageBox.Show($"Veri yükleme hatası: {ex.Message}", "Hata", MessageBoxButtons.OK, MessageBoxIcon.Error);
         }
     }
 
     public void RefreshData() => _ = LoadDataAsync();
 }
-

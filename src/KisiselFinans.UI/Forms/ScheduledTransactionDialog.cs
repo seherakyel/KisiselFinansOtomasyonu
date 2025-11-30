@@ -1,25 +1,25 @@
-using DevExpress.XtraEditors;
 using KisiselFinans.Business.Services;
 using KisiselFinans.Core.Entities;
 using KisiselFinans.Data.Context;
 using KisiselFinans.Data.Repositories;
+using KisiselFinans.UI.Theme;
 
 namespace KisiselFinans.UI.Forms;
 
-public partial class ScheduledTransactionDialog : XtraForm
+public class ScheduledTransactionDialog : Form
 {
     private readonly int _userId;
     private readonly int? _scheduledId;
     private ScheduledTransaction? _scheduled;
 
-    private LookUpEdit _cmbAccount = null!;
-    private LookUpEdit _cmbCategory = null!;
-    private SpinEdit _txtAmount = null!;
-    private MemoEdit _txtDescription = null!;
-    private ComboBoxEdit _cmbFrequency = null!;
-    private SpinEdit _txtDayOfMonth = null!;
-    private DateEdit _dateNext = null!;
-    private CheckEdit _chkActive = null!;
+    private ComboBox _cmbAccount = null!;
+    private ComboBox _cmbCategory = null!;
+    private NumericUpDown _txtAmount = null!;
+    private TextBox _txtDescription = null!;
+    private ComboBox _cmbFrequency = null!;
+    private NumericUpDown _txtDayOfMonth = null!;
+    private DateTimePicker _dateNext = null!;
+    private CheckBox _chkActive = null!;
 
     public ScheduledTransactionDialog(int userId, int? scheduledId)
     {
@@ -31,60 +31,111 @@ public partial class ScheduledTransactionDialog : XtraForm
 
     private void InitializeComponent()
     {
-        Text = _scheduledId.HasValue ? "Planlı İşlem Düzenle" : "Yeni Planlı İşlem";
-        Size = new Size(450, 450);
+        Text = _scheduledId.HasValue ? "📅 Planlı İşlem Düzenle" : "📅 Yeni Planlı İşlem";
+        Size = new Size(450, 500);
         StartPosition = FormStartPosition.CenterParent;
         FormBorderStyle = FormBorderStyle.FixedDialog;
         MaximizeBox = false;
         MinimizeBox = false;
+        BackColor = AppTheme.PrimaryDark;
 
-        var panel = new PanelControl { Dock = DockStyle.Fill, Padding = new Padding(20) };
-
-        var lblAccount = new LabelControl { Text = "Hesap", Location = new Point(20, 20) };
-        _cmbAccount = new LookUpEdit { Location = new Point(20, 40), Size = new Size(380, 28) };
-        _cmbAccount.Properties.Columns.Add(new DevExpress.XtraEditors.Controls.LookUpColumnInfo("AccountName", "Hesap"));
-        _cmbAccount.Properties.DisplayMember = "AccountName";
-        _cmbAccount.Properties.ValueMember = "Id";
-
-        var lblCategory = new LabelControl { Text = "Kategori", Location = new Point(20, 75) };
-        _cmbCategory = new LookUpEdit { Location = new Point(20, 95), Size = new Size(380, 28) };
-        _cmbCategory.Properties.Columns.Add(new DevExpress.XtraEditors.Controls.LookUpColumnInfo("CategoryName", "Kategori"));
-        _cmbCategory.Properties.DisplayMember = "CategoryName";
-        _cmbCategory.Properties.ValueMember = "Id";
-
-        var lblAmount = new LabelControl { Text = "Tutar", Location = new Point(20, 130) };
-        _txtAmount = new SpinEdit { Location = new Point(20, 150), Size = new Size(180, 28) };
-        _txtAmount.Properties.DisplayFormat.FormatString = "N2";
-
-        var lblFrequency = new LabelControl { Text = "Sıklık", Location = new Point(220, 130) };
-        _cmbFrequency = new ComboBoxEdit { Location = new Point(220, 150), Size = new Size(180, 28) };
-        _cmbFrequency.Properties.Items.AddRange(new[] { "Daily", "Weekly", "Monthly", "Yearly" });
-        _cmbFrequency.SelectedIndex = 2;
-
-        var lblDay = new LabelControl { Text = "Ayın Günü", Location = new Point(20, 185) };
-        _txtDayOfMonth = new SpinEdit { Location = new Point(20, 205), Size = new Size(180, 28) };
-        _txtDayOfMonth.Properties.MinValue = 1;
-        _txtDayOfMonth.Properties.MaxValue = 31;
-        _txtDayOfMonth.Value = DateTime.Now.Day;
-
-        var lblNext = new LabelControl { Text = "Sonraki Tarih", Location = new Point(220, 185) };
-        _dateNext = new DateEdit { Location = new Point(220, 205), Size = new Size(180, 28), EditValue = DateTime.Now.AddMonths(1) };
-
-        var lblDesc = new LabelControl { Text = "Açıklama", Location = new Point(20, 240) };
-        _txtDescription = new MemoEdit { Location = new Point(20, 260), Size = new Size(380, 50) };
-
-        _chkActive = new CheckEdit { Text = "Aktif", Location = new Point(20, 320), Checked = true };
-
-        var btnSave = new SimpleButton
+        var panel = new Panel
         {
-            Text = "Kaydet",
-            Location = new Point(220, 370),
-            Size = new Size(90, 30),
-            Appearance = { BackColor = Color.FromArgb(40, 167, 69), ForeColor = Color.White }
+            Dock = DockStyle.Fill,
+            Padding = new Padding(30),
+            BackColor = AppTheme.PrimaryDark
         };
+
+        int y = 10;
+        const int spacing = 50;
+
+        var lblAccount = CreateLabel("Hesap", y);
+        _cmbAccount = CreateComboBox(y + 18);
+
+        y += spacing;
+        var lblCategory = CreateLabel("Kategori", y);
+        _cmbCategory = CreateComboBox(y + 18);
+
+        y += spacing;
+        var lblAmount = CreateLabel("Tutar", y);
+        _txtAmount = new NumericUpDown
+        {
+            Location = new Point(0, y + 18),
+            Size = new Size(180, 30),
+            Maximum = 999999999,
+            DecimalPlaces = 2
+        };
+        AppTheme.StyleNumericUpDown(_txtAmount);
+
+        var lblFrequency = CreateLabel("Sıklık", y, 200);
+        _cmbFrequency = new ComboBox
+        {
+            Location = new Point(200, y + 18),
+            Size = new Size(180, 30),
+            DropDownStyle = ComboBoxStyle.DropDownList
+        };
+        _cmbFrequency.Items.AddRange(new[] { "Daily", "Weekly", "Monthly", "Yearly" });
+        _cmbFrequency.SelectedIndex = 2;
+        AppTheme.StyleComboBox(_cmbFrequency);
+
+        y += spacing;
+        var lblDay = CreateLabel("Ayın Günü", y);
+        _txtDayOfMonth = new NumericUpDown
+        {
+            Location = new Point(0, y + 18),
+            Size = new Size(180, 30),
+            Minimum = 1,
+            Maximum = 31,
+            Value = DateTime.Now.Day
+        };
+        AppTheme.StyleNumericUpDown(_txtDayOfMonth);
+
+        var lblNext = CreateLabel("Sonraki Tarih", y, 200);
+        _dateNext = new DateTimePicker
+        {
+            Location = new Point(200, y + 18),
+            Size = new Size(180, 30),
+            Format = DateTimePickerFormat.Short,
+            Value = DateTime.Now.AddMonths(1)
+        };
+
+        y += spacing;
+        var lblDesc = CreateLabel("Açıklama", y);
+        _txtDescription = new TextBox
+        {
+            Location = new Point(0, y + 18),
+            Size = new Size(380, 50),
+            Multiline = true
+        };
+        AppTheme.StyleTextBox(_txtDescription);
+
+        y += 70;
+        _chkActive = new CheckBox
+        {
+            Text = "Aktif",
+            Location = new Point(0, y),
+            ForeColor = AppTheme.TextPrimary,
+            Checked = true,
+            AutoSize = true
+        };
+
+        y += 40;
+        var btnSave = new Button
+        {
+            Text = "💾 KAYDET",
+            Location = new Point(190, y),
+            Size = new Size(90, 38)
+        };
+        AppTheme.StyleSuccessButton(btnSave);
         btnSave.Click += async (s, e) => await SaveAsync();
 
-        var btnCancel = new SimpleButton { Text = "İptal", Location = new Point(315, 370), Size = new Size(90, 30) };
+        var btnCancel = new Button
+        {
+            Text = "İPTAL",
+            Location = new Point(290, y),
+            Size = new Size(90, 38)
+        };
+        AppTheme.StyleButton(btnCancel);
         btnCancel.Click += (s, e) => { DialogResult = DialogResult.Cancel; Close(); };
 
         panel.Controls.AddRange(new Control[]
@@ -98,6 +149,27 @@ public partial class ScheduledTransactionDialog : XtraForm
         Controls.Add(panel);
     }
 
+    private Label CreateLabel(string text, int y, int x = 0) => new()
+    {
+        Text = text,
+        Font = AppTheme.FontSmall,
+        ForeColor = AppTheme.TextSecondary,
+        Location = new Point(x, y),
+        AutoSize = true
+    };
+
+    private ComboBox CreateComboBox(int y)
+    {
+        var cmb = new ComboBox
+        {
+            Location = new Point(0, y),
+            Size = new Size(380, 30),
+            DropDownStyle = ComboBoxStyle.DropDownList
+        };
+        AppTheme.StyleComboBox(cmb);
+        return cmb;
+    }
+
     private async Task LoadDataAsync()
     {
         using var context = DbContextFactory.CreateContext();
@@ -107,20 +179,27 @@ public partial class ScheduledTransactionDialog : XtraForm
         var categoryService = new CategoryService(unitOfWork);
         var scheduledService = new ScheduledTransactionService(unitOfWork);
 
-        _cmbAccount.Properties.DataSource = (await accountService.GetUserAccountsAsync(_userId)).ToList();
-        _cmbCategory.Properties.DataSource = (await categoryService.GetUserCategoriesAsync(_userId)).ToList();
+        var accounts = (await accountService.GetUserAccountsAsync(_userId)).ToList();
+        _cmbAccount.DataSource = accounts;
+        _cmbAccount.DisplayMember = "AccountName";
+        _cmbAccount.ValueMember = "Id";
+
+        var categories = (await categoryService.GetUserCategoriesAsync(_userId)).ToList();
+        _cmbCategory.DataSource = categories;
+        _cmbCategory.DisplayMember = "CategoryName";
+        _cmbCategory.ValueMember = "Id";
 
         if (_scheduledId.HasValue)
         {
             _scheduled = await scheduledService.GetByIdAsync(_scheduledId.Value);
             if (_scheduled != null)
             {
-                _cmbAccount.EditValue = _scheduled.AccountId;
-                _cmbCategory.EditValue = _scheduled.CategoryId;
+                _cmbAccount.SelectedValue = _scheduled.AccountId;
+                _cmbCategory.SelectedValue = _scheduled.CategoryId;
                 _txtAmount.Value = _scheduled.Amount;
-                _cmbFrequency.EditValue = _scheduled.FrequencyType;
+                _cmbFrequency.SelectedItem = _scheduled.FrequencyType;
                 _txtDayOfMonth.Value = _scheduled.DayOfMonth ?? 1;
-                _dateNext.EditValue = _scheduled.NextExecutionDate;
+                _dateNext.Value = _scheduled.NextExecutionDate;
                 _txtDescription.Text = _scheduled.Description;
                 _chkActive.Checked = _scheduled.IsActive;
             }
@@ -129,15 +208,15 @@ public partial class ScheduledTransactionDialog : XtraForm
 
     private async Task SaveAsync()
     {
-        if (_cmbAccount.EditValue == null || _cmbCategory.EditValue == null)
+        if (_cmbAccount.SelectedValue == null || _cmbCategory.SelectedValue == null)
         {
-            XtraMessageBox.Show("Hesap ve kategori seçiniz.", "Uyarı", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            MessageBox.Show("Hesap ve kategori seçiniz.", "Uyarı", MessageBoxButtons.OK, MessageBoxIcon.Warning);
             return;
         }
 
-        if ((decimal)_txtAmount.Value <= 0)
+        if (_txtAmount.Value <= 0)
         {
-            XtraMessageBox.Show("Tutar sıfırdan büyük olmalıdır.", "Uyarı", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            MessageBox.Show("Tutar sıfırdan büyük olmalıdır.", "Uyarı", MessageBoxButtons.OK, MessageBoxIcon.Warning);
             return;
         }
 
@@ -147,21 +226,21 @@ public partial class ScheduledTransactionDialog : XtraForm
             using var unitOfWork = new UnitOfWork(context);
             var service = new ScheduledTransactionService(unitOfWork);
 
-            if (_scheduled == null)
+            if (_scheduledId.HasValue)
             {
-                _scheduled = new ScheduledTransaction { UserId = _userId };
+                _scheduled = await service.GetByIdAsync(_scheduledId.Value);
             }
             else
             {
-                _scheduled = await service.GetByIdAsync(_scheduledId!.Value);
+                _scheduled = new ScheduledTransaction { UserId = _userId };
             }
 
-            _scheduled!.AccountId = (int)_cmbAccount.EditValue;
-            _scheduled.CategoryId = (int)_cmbCategory.EditValue;
-            _scheduled.Amount = (decimal)_txtAmount.Value;
-            _scheduled.FrequencyType = _cmbFrequency.EditValue?.ToString() ?? "Monthly";
+            _scheduled!.AccountId = (int)_cmbAccount.SelectedValue;
+            _scheduled.CategoryId = (int)_cmbCategory.SelectedValue;
+            _scheduled.Amount = _txtAmount.Value;
+            _scheduled.FrequencyType = _cmbFrequency.SelectedItem?.ToString() ?? "Monthly";
             _scheduled.DayOfMonth = (int)_txtDayOfMonth.Value;
-            _scheduled.NextExecutionDate = (DateTime)_dateNext.EditValue;
+            _scheduled.NextExecutionDate = _dateNext.Value;
             _scheduled.Description = _txtDescription.Text;
             _scheduled.IsActive = _chkActive.Checked;
 
@@ -175,8 +254,7 @@ public partial class ScheduledTransactionDialog : XtraForm
         }
         catch (Exception ex)
         {
-            XtraMessageBox.Show($"Kayıt hatası: {ex.Message}", "Hata", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            MessageBox.Show($"Kayıt hatası: {ex.Message}", "Hata", MessageBoxButtons.OK, MessageBoxIcon.Error);
         }
     }
 }
-

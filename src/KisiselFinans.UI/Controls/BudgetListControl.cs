@@ -1,20 +1,16 @@
-using DevExpress.XtraEditors;
-using DevExpress.XtraGrid;
-using DevExpress.XtraGrid.Views.Grid;
-using DevExpress.XtraLayout;
 using KisiselFinans.Business.Services;
 using KisiselFinans.Core.DTOs;
 using KisiselFinans.Data.Context;
 using KisiselFinans.Data.Repositories;
 using KisiselFinans.UI.Forms;
+using KisiselFinans.UI.Theme;
 
 namespace KisiselFinans.UI.Controls;
 
-public class BudgetListControl : XtraUserControl
+public class BudgetListControl : UserControl
 {
     private readonly int _userId;
-    private GridControl _grid = null!;
-    private GridView _gridView = null!;
+    private DataGridView _grid = null!;
 
     public BudgetListControl(int userId)
     {
@@ -25,41 +21,56 @@ public class BudgetListControl : XtraUserControl
 
     private void InitializeComponent()
     {
-        var layout = new LayoutControl { Dock = DockStyle.Fill };
-        Controls.Add(layout);
+        Dock = DockStyle.Fill;
+        BackColor = AppTheme.PrimaryDark;
+        Padding = new Padding(10);
 
-        var btnAdd = new SimpleButton { Text = "Yeni Bütçe Ekle", Size = new Size(150, 30) };
+        var toolbar = new Panel
+        {
+            Dock = DockStyle.Top,
+            Height = 50,
+            BackColor = AppTheme.PrimaryDark
+        };
+
+        var btnAdd = new Button
+        {
+            Text = "➕ Yeni Bütçe Ekle",
+            Location = new Point(0, 5),
+            Size = new Size(150, 35)
+        };
+        AppTheme.StyleSuccessButton(btnAdd);
         btnAdd.Click += (s, e) =>
         {
             using var dialog = new BudgetDialog(_userId, null);
             if (dialog.ShowDialog() == DialogResult.OK)
                 _ = LoadDataAsync();
         };
-        layout.Root.AddItem(new LayoutControlItem { Control = btnAdd, TextVisible = false });
 
-        _grid = new GridControl();
-        _gridView = new GridView(_grid);
-        _grid.MainView = _gridView;
+        toolbar.Controls.Add(btnAdd);
 
-        _gridView.OptionsBehavior.Editable = false;
-        _gridView.OptionsView.ShowGroupPanel = false;
-
-        var gridItem = new LayoutControlItem { Control = _grid, TextVisible = false };
-        gridItem.SizeConstraintsType = SizeConstraintsType.Custom;
-        gridItem.MinSize = new Size(800, 500);
-        layout.Root.AddItem(gridItem);
-
-        // Bütçe durumuna göre renklendirme
-        _gridView.RowStyle += (s, e) =>
+        _grid = new DataGridView
         {
-            if (_gridView.GetRow(e.RowHandle) is BudgetStatusDto row)
+            Dock = DockStyle.Fill,
+            ReadOnly = true,
+            AllowUserToAddRows = false,
+            AllowUserToDeleteRows = false
+        };
+        AppTheme.StyleDataGrid(_grid);
+
+        _grid.CellFormatting += (s, e) =>
+        {
+            if (_grid.Columns[e.ColumnIndex].Name == "Yuzde")
             {
-                if (row.IsOverBudget)
-                    e.Appearance.BackColor = Color.FromArgb(255, 200, 200);
-                else if (row.Percentage > 80)
-                    e.Appearance.BackColor = Color.FromArgb(255, 240, 200);
+                var value = Convert.ToDouble(_grid.Rows[e.RowIndex].Cells[e.ColumnIndex].Value);
+                if (value > 90)
+                    e.CellStyle!.BackColor = Color.FromArgb(80, 244, 67, 54);
+                else if (value > 70)
+                    e.CellStyle!.BackColor = Color.FromArgb(80, 255, 152, 0);
             }
         };
+
+        Controls.Add(_grid);
+        Controls.Add(toolbar);
     }
 
     private async Task LoadDataAsync()
@@ -71,28 +82,38 @@ public class BudgetListControl : XtraUserControl
             var service = new BudgetService(unitOfWork);
 
             var budgets = await service.GetBudgetStatusesAsync(_userId);
-            _grid.DataSource = budgets;
 
-            _gridView.PopulateColumns();
-            _gridView.Columns["CategoryName"].Caption = "Kategori";
-            _gridView.Columns["Limit"].Caption = "Limit";
-            _gridView.Columns["Limit"].DisplayFormat.FormatString = "N2";
-            _gridView.Columns["Spent"].Caption = "Harcanan";
-            _gridView.Columns["Spent"].DisplayFormat.FormatString = "N2";
-            _gridView.Columns["Remaining"].Caption = "Kalan";
-            _gridView.Columns["Remaining"].DisplayFormat.FormatString = "N2";
-            _gridView.Columns["Percentage"].Caption = "Yüzde";
-            _gridView.Columns["Percentage"].DisplayFormat.FormatString = "F1";
-            _gridView.Columns["IsOverBudget"].Caption = "Aşıldı mı?";
+            var displayList = budgets.Select(b => new
+            {
+                Kategori = b.CategoryName,
+                Limit = b.Limit,
+                Harcanan = b.Spent,
+                Kalan = b.Remaining,
+                Yuzde = b.Percentage,
+                Durum = b.IsOverBudget ? "❌ Aşıldı" : "✅ Normal"
+            }).ToList();
 
-            _gridView.BestFitColumns();
+            _grid.DataSource = displayList;
+
+            if (_grid.Columns.Count > 0)
+            {
+                _grid.Columns["Kategori"].HeaderText = "Kategori";
+                _grid.Columns["Limit"].HeaderText = "Limit";
+                _grid.Columns["Limit"].DefaultCellStyle.Format = "N2";
+                _grid.Columns["Harcanan"].HeaderText = "Harcanan";
+                _grid.Columns["Harcanan"].DefaultCellStyle.Format = "N2";
+                _grid.Columns["Kalan"].HeaderText = "Kalan";
+                _grid.Columns["Kalan"].DefaultCellStyle.Format = "N2";
+                _grid.Columns["Yuzde"].HeaderText = "Yüzde %";
+                _grid.Columns["Yuzde"].DefaultCellStyle.Format = "F1";
+                _grid.Columns["Durum"].HeaderText = "Durum";
+            }
         }
         catch (Exception ex)
         {
-            XtraMessageBox.Show($"Veri yükleme hatası: {ex.Message}", "Hata", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            MessageBox.Show($"Veri yükleme hatası: {ex.Message}", "Hata", MessageBoxButtons.OK, MessageBoxIcon.Error);
         }
     }
 
     public void RefreshData() => _ = LoadDataAsync();
 }
-
