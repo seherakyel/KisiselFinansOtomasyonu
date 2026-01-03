@@ -3,6 +3,7 @@ using KisiselFinans.Core.Entities;
 using KisiselFinans.Data.Context;
 using KisiselFinans.Data.Repositories;
 using KisiselFinans.UI.Theme;
+using System.Drawing.Drawing2D;
 
 namespace KisiselFinans.UI.Forms;
 
@@ -15,17 +16,13 @@ public class CategoryDialog : Form
     private TextBox _txtName = null!;
     private Panel _typeIncomeBtn = null!;
     private Panel _typeExpenseBtn = null!;
-    private byte _selectedType = 2; // Default: Gider
+    private byte _selectedType = 2;
 
-    private static readonly Color AccentColor = Color.FromArgb(236, 72, 153);
-    private static readonly Color IncomeColor = Color.FromArgb(34, 197, 94);
-    private static readonly Color ExpenseColor = Color.FromArgb(239, 68, 68);
-    private static readonly Color BgDark = Color.FromArgb(17, 24, 39);
-    private static readonly Color BgCard = Color.FromArgb(31, 41, 55);
-    private static readonly Color BorderColor = Color.FromArgb(55, 65, 81);
-    private static readonly Color TextMuted = Color.FromArgb(148, 163, 184);
+    private const int DIALOG_WIDTH = 400;
+    private const int DIALOG_HEIGHT = 360;
+    private const int FIELD_WIDTH = 352;
 
-    public CategoryDialog(int userId, int? categoryId)
+    public CategoryDialog(int userId, int? categoryId = null)
     {
         _userId = userId;
         _categoryId = categoryId;
@@ -36,135 +33,80 @@ public class CategoryDialog : Form
     private void InitializeComponent()
     {
         var isEdit = _categoryId.HasValue;
-        Text = isEdit ? "Kategori Duzenle" : "Yeni Kategori";
-        Size = new Size(450, 400);
-        StartPosition = FormStartPosition.CenterParent;
-        FormBorderStyle = FormBorderStyle.None;
-        BackColor = BgDark;
+        DialogStyles.ApplyDialogStyle(this, DIALOG_WIDTH, DIALOG_HEIGHT);
 
-        var mainPanel = new Panel { Dock = DockStyle.Fill, BackColor = BgDark };
+        // Header
+        var header = DialogStyles.CreateHeader(
+            "🏷", isEdit ? "Kategori Düzenle" : "Yeni Kategori", "İşlem kategorisi oluşturun",
+            Color.FromArgb(236, 72, 153),
+            () => { DialogResult = DialogResult.Cancel; Close(); });
 
-        // ===== HEADER =====
-        var header = new Panel { Dock = DockStyle.Top, Height = 90, BackColor = BgDark };
+        // Content
+        var content = DialogStyles.CreateContentPanel();
 
-        var iconPanel = new Panel { Size = new Size(56, 56), Location = new Point(30, 17) };
-        iconPanel.Paint += (s, e) =>
-        {
-            e.Graphics.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
-            using var brush = new SolidBrush(AccentColor);
-            e.Graphics.FillEllipse(brush, 0, 0, 55, 55);
-            using var font = new Font("Segoe UI", 22);
-            e.Graphics.DrawString("🏷", font, Brushes.White, 8, 8);
-        };
+        int y = 8;
 
-        header.Controls.Add(iconPanel);
-        header.Controls.Add(new Label
-        {
-            Text = isEdit ? "Kategori Duzenle" : "Yeni Kategori",
-            Font = new Font("Segoe UI", 20, FontStyle.Bold),
-            ForeColor = Color.White,
-            Location = new Point(100, 22),
-            AutoSize = true
-        });
-        header.Controls.Add(new Label
-        {
-            Text = "Islem kategorisi olusturun",
-            Font = new Font("Segoe UI", 11),
-            ForeColor = TextMuted,
-            Location = new Point(102, 52),
-            AutoSize = true
-        });
-        header.Controls.Add(CreateCloseButton());
-
-        var divider = new Panel { Dock = DockStyle.Top, Height = 1, BackColor = BorderColor };
-
-        // ===== CONTENT =====
-        var content = new Panel { Dock = DockStyle.Fill, BackColor = BgDark, Padding = new Padding(30, 25, 30, 25) };
-
-        int y = 0;
-
-        // KATEGORI ADI
-        content.Controls.Add(new Label
-        {
-            Text = "Kategori Adi", Font = new Font("Segoe UI Semibold", 11),
-            ForeColor = Color.White, Location = new Point(0, y), AutoSize = true
-        });
-
-        _txtName = new TextBox
-        {
-            Location = new Point(0, y + 30), Size = new Size(375, 45),
-            Font = new Font("Segoe UI", 13), BackColor = BgCard,
-            ForeColor = Color.White, BorderStyle = BorderStyle.FixedSingle
-        };
+        // Kategori Adı
+        content.Controls.Add(DialogStyles.CreateLabel("Kategori Adı", 0, y));
+        _txtName = DialogStyles.CreateTextBox(0, y + 24, FIELD_WIDTH);
+        _txtName.Font = new Font("Segoe UI", 12);
         content.Controls.Add(_txtName);
+        y += 72;
 
-        y += 90;
+        // Kategori Türü
+        content.Controls.Add(DialogStyles.CreateLabel("Kategori Türü", 0, y));
+        y += 28;
 
-        // TUR SECIMI
-        content.Controls.Add(new Label
-        {
-            Text = "Kategori Turu", Font = new Font("Segoe UI Semibold", 11),
-            ForeColor = Color.White, Location = new Point(0, y), AutoSize = true
-        });
+        int btnWidth = (FIELD_WIDTH - 12) / 2;
 
-        y += 30;
-
-        // Gelir Button
-        _typeIncomeBtn = CreateTypeButton("+ Gelir", IncomeColor, 0, y, () => SelectType(1));
+        // Gelir butonu
+        _typeIncomeBtn = CreateTypeButton("+ Gelir", DialogStyles.AccentGreen, 0, y, btnWidth, () => SelectType(1));
         content.Controls.Add(_typeIncomeBtn);
 
-        // Gider Button
-        _typeExpenseBtn = CreateTypeButton("- Gider", ExpenseColor, 195, y, () => SelectType(2));
-        SelectType(2); // Default
+        // Gider butonu
+        _typeExpenseBtn = CreateTypeButton("− Gider", DialogStyles.AccentRed, btnWidth + 12, y, btnWidth, () => SelectType(2));
         content.Controls.Add(_typeExpenseBtn);
 
-        // ===== FOOTER =====
-        var footer = new Panel { Dock = DockStyle.Bottom, Height = 85, BackColor = Color.FromArgb(24, 32, 48) };
+        SelectType(2); // Default: Gider
 
-        var btnCancel = new Button
-        {
-            Text = "Vazgec", Size = new Size(120, 45), Location = new Point(120, 20),
-            FlatStyle = FlatStyle.Flat, BackColor = BorderColor, ForeColor = Color.White,
-            Font = new Font("Segoe UI Semibold", 11), Cursor = Cursors.Hand
-        };
-        btnCancel.FlatAppearance.BorderSize = 0;
-        btnCancel.Click += (s, e) => { DialogResult = DialogResult.Cancel; Close(); };
+        // Footer
+        var footer = DialogStyles.CreateFooter(
+            "Kaydet",
+            Color.FromArgb(236, 72, 153),
+            () => { DialogResult = DialogResult.Cancel; Close(); },
+            async () => await SaveAsync());
 
-        var btnSave = new Button
-        {
-            Text = "Kaydet", Size = new Size(140, 45), Location = new Point(250, 20),
-            FlatStyle = FlatStyle.Flat, BackColor = AccentColor, ForeColor = Color.White,
-            Font = new Font("Segoe UI Semibold", 11), Cursor = Cursors.Hand
-        };
-        btnSave.FlatAppearance.BorderSize = 0;
-        btnSave.Click += async (s, e) => await SaveAsync();
+        var divider = DialogStyles.CreateDivider();
 
-        footer.Controls.AddRange(new Control[] { btnCancel, btnSave });
-
-        var accentLine = new Panel { Dock = DockStyle.Top, Height = 3, BackColor = AccentColor };
-
-        mainPanel.Controls.Add(content);
-        mainPanel.Controls.Add(divider);
-        mainPanel.Controls.Add(header);
-        mainPanel.Controls.Add(footer);
-        mainPanel.Controls.Add(accentLine);
-
-        Controls.Add(mainPanel);
+        Controls.Add(content);
+        Controls.Add(divider);
+        Controls.Add(header);
+        Controls.Add(footer);
     }
 
-    private Panel CreateTypeButton(string text, Color color, int x, int y, Action onClick)
+    private Panel CreateTypeButton(string text, Color color, int x, int y, int width, Action onClick)
     {
         var panel = new Panel
         {
-            Location = new Point(x, y), Size = new Size(180, 55),
-            BackColor = BgCard, Cursor = Cursors.Hand
+            Location = new Point(x, y),
+            Size = new Size(width, 50),
+            BackColor = DialogStyles.BgInput,
+            Cursor = Cursors.Hand
+        };
+        panel.Paint += (s, e) =>
+        {
+            using var pen = new Pen(DialogStyles.BorderDefault, 1);
+            e.Graphics.DrawRectangle(pen, 0, 0, panel.Width - 1, panel.Height - 1);
         };
 
         var lbl = new Label
         {
-            Text = text, Font = new Font("Segoe UI Semibold", 13),
-            ForeColor = color, Dock = DockStyle.Fill,
-            TextAlign = ContentAlignment.MiddleCenter, Cursor = Cursors.Hand
+            Text = text,
+            Font = new Font("Segoe UI Semibold", 12),
+            ForeColor = color,
+            Dock = DockStyle.Fill,
+            TextAlign = ContentAlignment.MiddleCenter,
+            Cursor = Cursors.Hand
         };
 
         panel.Click += (s, e) => onClick();
@@ -180,48 +122,43 @@ public class CategoryDialog : Form
 
         if (type == 1)
         {
-            _typeIncomeBtn.BackColor = IncomeColor;
-            _typeIncomeBtn.Controls[0].ForeColor = Color.White;
-            _typeExpenseBtn.BackColor = BgCard;
-            _typeExpenseBtn.Controls[0].ForeColor = ExpenseColor;
+            _typeIncomeBtn.BackColor = DialogStyles.AccentGreen;
+            ((Label)_typeIncomeBtn.Controls[0]).ForeColor = Color.White;
+            _typeExpenseBtn.BackColor = DialogStyles.BgInput;
+            ((Label)_typeExpenseBtn.Controls[0]).ForeColor = DialogStyles.AccentRed;
         }
         else
         {
-            _typeExpenseBtn.BackColor = ExpenseColor;
-            _typeExpenseBtn.Controls[0].ForeColor = Color.White;
-            _typeIncomeBtn.BackColor = BgCard;
-            _typeIncomeBtn.Controls[0].ForeColor = IncomeColor;
+            _typeExpenseBtn.BackColor = DialogStyles.AccentRed;
+            ((Label)_typeExpenseBtn.Controls[0]).ForeColor = Color.White;
+            _typeIncomeBtn.BackColor = DialogStyles.BgInput;
+            ((Label)_typeIncomeBtn.Controls[0]).ForeColor = DialogStyles.AccentGreen;
         }
-    }
-
-    private Label CreateCloseButton()
-    {
-        var btn = new Label
-        {
-            Text = "✕", Font = new Font("Segoe UI", 14),
-            ForeColor = Color.FromArgb(100, 116, 139),
-            Size = new Size(44, 44), Location = new Point(390, 10),
-            TextAlign = ContentAlignment.MiddleCenter, Cursor = Cursors.Hand
-        };
-        btn.Click += (s, e) => { DialogResult = DialogResult.Cancel; Close(); };
-        btn.MouseEnter += (s, e) => btn.ForeColor = Color.FromArgb(239, 68, 68);
-        btn.MouseLeave += (s, e) => btn.ForeColor = Color.FromArgb(100, 116, 139);
-        return btn;
     }
 
     private async Task LoadDataAsync()
     {
         if (_categoryId.HasValue)
         {
-            using var context = DbContextFactory.CreateContext();
-            using var unitOfWork = new UnitOfWork(context);
-            var service = new CategoryService(unitOfWork);
-
-            _category = await service.GetByIdAsync(_categoryId.Value);
-            if (_category != null)
+            try
             {
-                _txtName.Text = _category.CategoryName;
-                SelectType(_category.Type);
+                using var context = DbContextFactory.CreateContext();
+                using var unitOfWork = new UnitOfWork(context);
+                var service = new CategoryService(unitOfWork);
+
+                _category = await service.GetByIdAsync(_categoryId.Value);
+                if (_category != null)
+                {
+                    BeginInvoke(() =>
+                    {
+                        _txtName.Text = _category.CategoryName;
+                        SelectType(_category.Type);
+                    });
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Veri yükleme hatası: {ex.Message}", "Hata", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
     }
@@ -230,7 +167,7 @@ public class CategoryDialog : Form
     {
         if (string.IsNullOrWhiteSpace(_txtName.Text))
         {
-            MessageBox.Show("Kategori adi zorunludur.", "Uyari", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            MessageBox.Show("Kategori adı zorunludur.", "Uyarı", MessageBoxButtons.OK, MessageBoxIcon.Warning);
             return;
         }
 
@@ -245,7 +182,7 @@ public class CategoryDialog : Form
             else
                 _category = new Category { UserId = _userId };
 
-            _category!.CategoryName = _txtName.Text;
+            _category!.CategoryName = _txtName.Text.Trim();
             _category.Type = _selectedType;
             _category.IconIndex = 0;
 
@@ -259,7 +196,7 @@ public class CategoryDialog : Form
         }
         catch (Exception ex)
         {
-            MessageBox.Show($"Kayit hatasi: {ex.Message}", "Hata", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            MessageBox.Show($"Kayıt hatası: {ex.Message}", "Hata", MessageBoxButtons.OK, MessageBoxIcon.Error);
         }
     }
 }

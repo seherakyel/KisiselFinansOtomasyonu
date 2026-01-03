@@ -12,17 +12,15 @@ public class TransferDialog : Form
     private readonly int _userId;
     private ComboBox _cmbFromAccount = null!;
     private ComboBox _cmbToAccount = null!;
-    private DateTimePicker _dateTransaction = null!;
+    private DateTimePicker _datePicker = null!;
     private TextBox _txtAmount = null!;
     private TextBox _txtDescription = null!;
     private List<Account> _accounts = new();
 
-    private static readonly Color AccentColor = Color.FromArgb(59, 130, 246);
-    private static readonly Color AccentColorLight = Color.FromArgb(96, 165, 250);
-    private static readonly Color BgDark = Color.FromArgb(17, 24, 39);
-    private static readonly Color BgCard = Color.FromArgb(31, 41, 55);
-    private static readonly Color BorderColor = Color.FromArgb(55, 65, 81);
-    private static readonly Color TextMuted = Color.FromArgb(148, 163, 184);
+    private const int DIALOG_WIDTH = 420;
+    private const int DIALOG_HEIGHT = 540;
+    private const int CONTENT_PADDING = 24;
+    private const int FIELD_WIDTH = 372;
 
     public TransferDialog(int userId)
     {
@@ -33,295 +31,128 @@ public class TransferDialog : Form
 
     private void InitializeComponent()
     {
-        Text = "Transfer";
-        Size = new Size(480, 620);
-        StartPosition = FormStartPosition.CenterParent;
-        FormBorderStyle = FormBorderStyle.None;
-        BackColor = BgDark;
+        DialogStyles.ApplyDialogStyle(this, DIALOG_WIDTH, DIALOG_HEIGHT);
 
-        // Main container
-        var mainPanel = new Panel { Dock = DockStyle.Fill, BackColor = BgDark };
+        // Header
+        var header = DialogStyles.CreateHeader(
+            "⇄", "Para Transferi", "Hesaplar arası para aktarımı",
+            DialogStyles.AccentBlue,
+            () => { DialogResult = DialogResult.Cancel; Close(); });
 
-        // ===== HEADER =====
-        var header = new Panel { Dock = DockStyle.Top, Height = 90, BackColor = BgDark };
+        // Content
+        var content = DialogStyles.CreateContentPanel();
+        
+        int y = 8;
+        int spacing = 68;
 
-        // Icon
-        var iconPanel = new Panel { Size = new Size(56, 56), Location = new Point(35, 17), BackColor = AccentColor };
-        iconPanel.Paint += (s, e) =>
-        {
-            e.Graphics.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
-            using var brush = new SolidBrush(AccentColor);
-            e.Graphics.FillEllipse(brush, 0, 0, 55, 55);
-            using var font = new Font("Segoe UI", 22, FontStyle.Bold);
-            e.Graphics.DrawString("⇄", font, Brushes.White, 10, 10);
-        };
-
-        var lblTitle = new Label
-        {
-            Text = "Para Transferi",
-            Font = new Font("Segoe UI", 20, FontStyle.Bold),
-            ForeColor = Color.White,
-            Location = new Point(105, 22),
-            AutoSize = true
-        };
-
-        var lblSubtitle = new Label
-        {
-            Text = "Hesaplar arasi para aktarimi",
-            Font = new Font("Segoe UI", 11),
-            ForeColor = TextMuted,
-            Location = new Point(107, 52),
-            AutoSize = true
-        };
-
-        var btnClose = CreateCloseButton();
-        header.Controls.AddRange(new Control[] { iconPanel, lblTitle, lblSubtitle, btnClose });
-
-        var divider = new Panel { Dock = DockStyle.Top, Height = 1, BackColor = BorderColor };
-
-        // ===== CONTENT =====
-        var content = new Panel
-        {
-            Dock = DockStyle.Fill,
-            BackColor = BgDark,
-            Padding = new Padding(35, 25, 35, 25)
-        };
-
-        int y = 5;
-
-        // FROM ACCOUNT
-        content.Controls.Add(CreateInputSection("Kaynak Hesap", "Paranin cekilecegi hesap", y));
-        _cmbFromAccount = CreateStyledComboBox(y + 45);
+        // Kaynak Hesap
+        content.Controls.Add(DialogStyles.CreateLabel("Kaynak Hesap", 0, y));
+        _cmbFromAccount = DialogStyles.CreateComboBox(0, y + 24, FIELD_WIDTH);
         content.Controls.Add(_cmbFromAccount);
+        y += spacing;
 
-        y += 95;
-
-        // Arrow indicator
+        // Transfer göstergesi
         var arrowPanel = new Panel
         {
-            Location = new Point(175, y),
-            Size = new Size(50, 30),
+            Location = new Point(FIELD_WIDTH / 2 - 16, y),
+            Size = new Size(32, 32),
             BackColor = Color.Transparent
         };
         var arrowLabel = new Label
         {
             Text = "↓",
-            Font = new Font("Segoe UI", 18),
-            ForeColor = AccentColor,
+            Font = new Font("Segoe UI", 16),
+            ForeColor = DialogStyles.AccentBlue,
             Dock = DockStyle.Fill,
             TextAlign = ContentAlignment.MiddleCenter
         };
         arrowPanel.Controls.Add(arrowLabel);
         content.Controls.Add(arrowPanel);
+        y += 40;
 
-        y += 35;
-
-        // TO ACCOUNT
-        content.Controls.Add(CreateInputSection("Hedef Hesap", "Paranin yatirilacagi hesap", y));
-        _cmbToAccount = CreateStyledComboBox(y + 45);
+        // Hedef Hesap
+        content.Controls.Add(DialogStyles.CreateLabel("Hedef Hesap", 0, y));
+        _cmbToAccount = DialogStyles.CreateComboBox(0, y + 24, FIELD_WIDTH);
         content.Controls.Add(_cmbToAccount);
+        y += spacing;
 
-        y += 100;
-
-        // AMOUNT
-        content.Controls.Add(CreateInputSection("Transfer Tutari", "", y));
-
-        var amountContainer = new Panel
-        {
-            Location = new Point(0, y + 40),
-            Size = new Size(395, 55),
-            BackColor = BgCard
-        };
-
-        var currencyLabel = new Label
-        {
-            Text = "₺",
-            Font = new Font("Segoe UI", 20, FontStyle.Bold),
-            ForeColor = AccentColor,
-            Size = new Size(50, 55),
-            TextAlign = ContentAlignment.MiddleCenter,
-            BackColor = BgCard
-        };
-
-        _txtAmount = new TextBox
-        {
-            Location = new Point(50, 8),
-            Size = new Size(340, 40),
-            Font = new Font("Segoe UI", 18),
-            BackColor = BgCard,
-            ForeColor = Color.White,
-            BorderStyle = BorderStyle.None,
-            Text = "0,00",
-            TextAlign = HorizontalAlignment.Right
-        };
-        _txtAmount.GotFocus += (s, e) => { if (_txtAmount.Text == "0,00") _txtAmount.Text = ""; };
-        _txtAmount.LostFocus += (s, e) => { if (string.IsNullOrWhiteSpace(_txtAmount.Text)) _txtAmount.Text = "0,00"; };
-
-        amountContainer.Controls.AddRange(new Control[] { currencyLabel, _txtAmount });
+        // Transfer Tutarı
+        content.Controls.Add(DialogStyles.CreateLabel("Transfer Tutarı", 0, y));
+        var (amountContainer, amountTxt) = DialogStyles.CreateCurrencyInput(0, y + 24, FIELD_WIDTH, DialogStyles.AccentBlue);
+        _txtAmount = amountTxt;
         content.Controls.Add(amountContainer);
+        y += spacing + 8;
 
-        y += 110;
+        // Tarih
+        content.Controls.Add(DialogStyles.CreateLabel("İşlem Tarihi", 0, y));
+        _datePicker = DialogStyles.CreateDatePicker(0, y + 24, FIELD_WIDTH);
+        content.Controls.Add(_datePicker);
+        y += spacing;
 
-        // DATE
-        content.Controls.Add(CreateInputSection("Tarih", "", y));
-        _dateTransaction = new DateTimePicker
-        {
-            Location = new Point(0, y + 35),
-            Size = new Size(395, 40),
-            Format = DateTimePickerFormat.Long,
-            Value = DateTime.Now,
-            Font = new Font("Segoe UI", 11)
-        };
-        content.Controls.Add(_dateTransaction);
-
-        y += 85;
-
-        // DESCRIPTION
-        content.Controls.Add(CreateInputSection("Not (Opsiyonel)", "", y));
-        _txtDescription = new TextBox
-        {
-            Location = new Point(0, y + 35),
-            Size = new Size(395, 45),
-            Font = new Font("Segoe UI", 11),
-            BackColor = BgCard,
-            ForeColor = Color.White,
-            BorderStyle = BorderStyle.FixedSingle,
-            Multiline = true
-        };
+        // Açıklama
+        content.Controls.Add(DialogStyles.CreateLabel("Not (Opsiyonel)", 0, y));
+        _txtDescription = DialogStyles.CreateTextBox(0, y + 24, FIELD_WIDTH);
+        _txtDescription.Height = 40;
         content.Controls.Add(_txtDescription);
 
-        // ===== FOOTER =====
-        var footer = new Panel
-        {
-            Dock = DockStyle.Bottom,
-            Height = 85,
-            BackColor = Color.FromArgb(24, 32, 48),
-            Padding = new Padding(35, 20, 35, 20)
-        };
+        // Footer
+        var footer = DialogStyles.CreateFooter(
+            "Transfer Yap",
+            DialogStyles.AccentBlue,
+            () => { DialogResult = DialogResult.Cancel; Close(); },
+            async () => await SaveAsync());
 
-        var btnCancel = CreateButton("Vazgec", BorderColor, 140, false);
-        btnCancel.Click += (s, e) => { DialogResult = DialogResult.Cancel; Close(); };
+        // Divider
+        var divider = DialogStyles.CreateDivider();
 
-        var btnTransfer = CreateButton("Transfer Yap  ⇄", AccentColor, 270, true);
-        btnTransfer.Click += async (s, e) => await SaveAsync();
-
-        footer.Controls.AddRange(new Control[] { btnCancel, btnTransfer });
-
-        var accentLine = new Panel { Dock = DockStyle.Top, Height = 3, BackColor = AccentColor };
-
-        mainPanel.Controls.Add(content);
-        mainPanel.Controls.Add(divider);
-        mainPanel.Controls.Add(header);
-        mainPanel.Controls.Add(footer);
-        mainPanel.Controls.Add(accentLine);
-
-        Controls.Add(mainPanel);
-    }
-
-    private Label CreateCloseButton()
-    {
-        var btn = new Label
-        {
-            Text = "✕",
-            Font = new Font("Segoe UI", 14),
-            ForeColor = Color.FromArgb(100, 116, 139),
-            Size = new Size(44, 44),
-            Location = new Point(420, 10),
-            TextAlign = ContentAlignment.MiddleCenter,
-            Cursor = Cursors.Hand
-        };
-        btn.Click += (s, e) => { DialogResult = DialogResult.Cancel; Close(); };
-        btn.MouseEnter += (s, e) => btn.ForeColor = Color.FromArgb(239, 68, 68);
-        btn.MouseLeave += (s, e) => btn.ForeColor = Color.FromArgb(100, 116, 139);
-        return btn;
-    }
-
-    private Panel CreateInputSection(string label, string hint, int y)
-    {
-        var panel = new Panel { Location = new Point(0, y), Size = new Size(395, 45), BackColor = Color.Transparent };
-        panel.Controls.Add(new Label
-        {
-            Text = label,
-            Font = new Font("Segoe UI Semibold", 11),
-            ForeColor = Color.White,
-            Location = new Point(0, 0),
-            AutoSize = true
-        });
-        if (!string.IsNullOrEmpty(hint))
-        {
-            panel.Controls.Add(new Label
-            {
-                Text = hint,
-                Font = new Font("Segoe UI", 9),
-                ForeColor = TextMuted,
-                Location = new Point(0, 22),
-                AutoSize = true
-            });
-        }
-        return panel;
-    }
-
-    private ComboBox CreateStyledComboBox(int y) => new()
-    {
-        Location = new Point(0, y),
-        Size = new Size(395, 45),
-        DropDownStyle = ComboBoxStyle.DropDownList,
-        Font = new Font("Segoe UI", 12),
-        BackColor = BgCard,
-        ForeColor = Color.White,
-        FlatStyle = FlatStyle.Flat
-    };
-
-    private Button CreateButton(string text, Color bgColor, int x, bool isPrimary)
-    {
-        var btn = new Button
-        {
-            Text = text,
-            Size = new Size(isPrimary ? 160 : 120, 45),
-            Location = new Point(x, 20),
-            FlatStyle = FlatStyle.Flat,
-            BackColor = bgColor,
-            ForeColor = Color.White,
-            Font = new Font("Segoe UI Semibold", 11),
-            Cursor = Cursors.Hand
-        };
-        btn.FlatAppearance.BorderSize = 0;
-        if (isPrimary)
-        {
-            btn.MouseEnter += (s, e) => btn.BackColor = AccentColorLight;
-            btn.MouseLeave += (s, e) => btn.BackColor = bgColor;
-        }
-        return btn;
+        Controls.Add(content);
+        Controls.Add(divider);
+        Controls.Add(header);
+        Controls.Add(footer);
     }
 
     private async Task LoadDataAsync()
     {
-        using var context = DbContextFactory.CreateContext();
-        using var unitOfWork = new UnitOfWork(context);
-        var accountService = new AccountService(unitOfWork);
+        try
+        {
+            using var context = DbContextFactory.CreateContext();
+            using var unitOfWork = new UnitOfWork(context);
+            var accountService = new AccountService(unitOfWork);
 
-        _accounts = (await accountService.GetUserAccountsAsync(_userId)).ToList();
+            _accounts = (await accountService.GetUserAccountsAsync(_userId)).ToList();
 
-        _cmbFromAccount.DataSource = _accounts.ToList();
-        _cmbFromAccount.DisplayMember = "AccountName";
-        _cmbFromAccount.ValueMember = "Id";
+            BeginInvoke(() =>
+            {
+                _cmbFromAccount.DataSource = _accounts.Select(a => new { a.Id, Display = $"{a.AccountName} (₺{a.CurrentBalance:N2})" }).ToList();
+                _cmbFromAccount.DisplayMember = "Display";
+                _cmbFromAccount.ValueMember = "Id";
 
-        _cmbToAccount.DataSource = _accounts.ToList();
-        _cmbToAccount.DisplayMember = "AccountName";
-        _cmbToAccount.ValueMember = "Id";
+                _cmbToAccount.DataSource = _accounts.Select(a => new { a.Id, Display = $"{a.AccountName} (₺{a.CurrentBalance:N2})" }).ToList();
+                _cmbToAccount.DisplayMember = "Display";
+                _cmbToAccount.ValueMember = "Id";
+            });
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show($"Veri yükleme hatası: {ex.Message}", "Hata", MessageBoxButtons.OK, MessageBoxIcon.Error);
+        }
     }
 
     private async Task SaveAsync()
     {
+        // Validasyon
         if (_cmbFromAccount.SelectedValue == null || _cmbToAccount.SelectedValue == null)
         {
-            MessageBox.Show("Kaynak ve hedef hesap seciniz.", "Uyari", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            ShowWarning("Lütfen kaynak ve hedef hesap seçiniz.");
             return;
         }
 
-        if ((int)_cmbFromAccount.SelectedValue == (int)_cmbToAccount.SelectedValue)
+        var fromId = (int)_cmbFromAccount.SelectedValue;
+        var toId = (int)_cmbToAccount.SelectedValue;
+
+        if (fromId == toId)
         {
-            MessageBox.Show("Kaynak ve hedef hesap ayni olamaz.", "Uyari", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            ShowWarning("Kaynak ve hedef hesap aynı olamaz.");
             return;
         }
 
@@ -330,7 +161,7 @@ public class TransferDialog : Form
             System.Globalization.CultureInfo.InvariantCulture,
             out var amount) || amount <= 0)
         {
-            MessageBox.Show("Gecerli bir tutar giriniz.", "Uyari", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            ShowWarning("Lütfen geçerli bir tutar giriniz.");
             return;
         }
 
@@ -342,21 +173,25 @@ public class TransferDialog : Form
 
             var dto = new TransferDto
             {
-                FromAccountId = (int)_cmbFromAccount.SelectedValue,
-                ToAccountId = (int)_cmbToAccount.SelectedValue,
-                TransactionDate = _dateTransaction.Value,
+                FromAccountId = fromId,
+                ToAccountId = toId,
+                TransactionDate = _datePicker.Value,
                 Amount = amount,
-                Description = _txtDescription.Text
+                Description = _txtDescription.Text.Trim()
             };
 
             await service.TransferAsync(dto);
-
             DialogResult = DialogResult.OK;
             Close();
         }
         catch (Exception ex)
         {
-            MessageBox.Show($"Transfer hatasi: {ex.Message}", "Hata", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            MessageBox.Show($"Transfer hatası: {ex.Message}", "Hata", MessageBoxButtons.OK, MessageBoxIcon.Error);
         }
+    }
+
+    private void ShowWarning(string message)
+    {
+        MessageBox.Show(message, "Uyarı", MessageBoxButtons.OK, MessageBoxIcon.Warning);
     }
 }
