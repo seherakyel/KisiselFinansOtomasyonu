@@ -1,5 +1,6 @@
 using KisiselFinans.Data.Context;
 using KisiselFinans.UI.Forms;
+using KisiselFinans.UI.Theme;
 using Microsoft.Extensions.Configuration;
 
 namespace KisiselFinans.UI;
@@ -37,6 +38,9 @@ internal static class Program
 
             var connectionString = Configuration.GetConnectionString("DefaultConnection");
             DbContextFactory.Initialize(connectionString!);
+
+            // Tema tercihini yükle
+            ThemeManager.LoadThemePreference();
 
             using var loginForm = new LoginForm();
             if (loginForm.ShowDialog() == DialogResult.OK)

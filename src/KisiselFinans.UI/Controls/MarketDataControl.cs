@@ -25,7 +25,7 @@ public class MarketDataControl : UserControl
     private void InitializeComponent()
     {
         Dock = DockStyle.Fill;
-        BackColor = Color.FromArgb(25, 28, 38);
+        BackColor = AppTheme.PrimaryDark;
         AutoScroll = true;
 
         // Header
@@ -33,7 +33,7 @@ public class MarketDataControl : UserControl
         {
             Dock = DockStyle.Top,
             Height = 80,
-            BackColor = Color.FromArgb(30, 35, 48)
+            BackColor = AppTheme.PrimaryMedium
         };
 
         var lblTitle = new Label
@@ -92,7 +92,7 @@ public class MarketDataControl : UserControl
             FlowDirection = FlowDirection.LeftToRight,
             WrapContents = true,
             Padding = new Padding(15),
-            BackColor = Color.FromArgb(25, 28, 38)
+            BackColor = AppTheme.PrimaryDark
         };
 
         var loadingLabel = new Label
@@ -200,7 +200,7 @@ public class MarketDataControl : UserControl
         {
             Size = new Size(300, 130),
             Margin = new Padding(8),
-            BackColor = Color.FromArgb(35, 40, 55),
+            BackColor = AppTheme.CardBg,
             Cursor = Cursors.Hand
         };
 
@@ -294,8 +294,8 @@ public class MarketDataControl : UserControl
         }
 
         // Hover efekti
-        card.MouseEnter += (s, e) => card.BackColor = Color.FromArgb(50, 55, 75);
-        card.MouseLeave += (s, e) => card.BackColor = Color.FromArgb(35, 40, 55);
+        card.MouseEnter += (s, e) => card.BackColor = AppTheme.CardBgHover;
+        card.MouseLeave += (s, e) => card.BackColor = AppTheme.CardBg;
 
         card.Controls.AddRange(new Control[] { lblName, lblChange, lblBuyLabel, lblBuy, lblSellLabel, lblSell });
         _mainLayout.Controls.Add(card);
@@ -307,7 +307,7 @@ public class MarketDataControl : UserControl
         {
             Size = new Size(240, 110),
             Margin = new Padding(8),
-            BackColor = Color.FromArgb(35, 40, 55),
+            BackColor = AppTheme.CardBg,
             Cursor = Cursors.Hand
         };
 
@@ -366,8 +366,8 @@ public class MarketDataControl : UserControl
             card.Controls.Add(lblOffline);
         }
 
-        card.MouseEnter += (s, e) => card.BackColor = Color.FromArgb(50, 55, 75);
-        card.MouseLeave += (s, e) => card.BackColor = Color.FromArgb(35, 40, 55);
+        card.MouseEnter += (s, e) => card.BackColor = AppTheme.CardBgHover;
+        card.MouseLeave += (s, e) => card.BackColor = AppTheme.CardBg;
 
         card.Controls.AddRange(new Control[] { lblName, lblChange, lblPrice });
         _mainLayout.Controls.Add(card);

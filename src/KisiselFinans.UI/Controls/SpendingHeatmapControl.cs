@@ -28,7 +28,7 @@ public class SpendingHeatmapControl : UserControl
     private void InitializeComponent()
     {
         Size = new Size(920, 200);
-        BackColor = Color.FromArgb(30, 33, 45);
+        BackColor = AppTheme.PrimaryMedium;
         DoubleBuffered = true;
         Padding = new Padding(15);
 
@@ -164,7 +164,7 @@ public class SpendingHeatmapControl : UserControl
     private Color GetHeatColor(decimal spending)
     {
         if (spending == 0)
-            return Color.FromArgb(40, 44, 60); // Boş gün
+            return AppTheme.Surface; // Boş gün - tema rengi
 
         var intensity = Math.Min(1.0, (double)(spending / (_maxSpending > 0 ? _maxSpending : 1)));
 
@@ -202,7 +202,7 @@ public class SpendingHeatmapControl : UserControl
         g.DrawString("Az", font, brush, x, y);
 
         Color[] colors = {
-            Color.FromArgb(40, 44, 60),
+            AppTheme.Surface,
             Color.FromArgb(46, 160, 67),
             Color.FromArgb(139, 195, 74),
             Color.FromArgb(255, 193, 7),

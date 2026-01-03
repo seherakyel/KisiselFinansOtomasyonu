@@ -25,7 +25,7 @@ public class SavingsGoalsCard : UserControl
     private void InitializeComponent()
     {
         Size = new Size(350, 280);
-        BackColor = Color.FromArgb(30, 35, 50);
+        BackColor = AppTheme.PrimaryMedium;
         Padding = new Padding(15);
 
         // Başlık
@@ -145,7 +145,7 @@ public class SavingsGoalsCard : UserControl
         {
             Size = new Size(310, 55),
             Margin = new Padding(0, 5, 0, 5),
-            BackColor = Color.FromArgb(40, 45, 60),
+            BackColor = AppTheme.CardBg,
             Cursor = Cursors.Hand
         };
 
@@ -196,7 +196,7 @@ public class SavingsGoalsCard : UserControl
         {
             Location = new Point(45, 42),
             Size = new Size(220, 8),
-            BackColor = Color.FromArgb(60, 65, 80)
+            BackColor = AppTheme.Surface
         };
 
         var progressFill = new Panel
@@ -208,8 +208,8 @@ public class SavingsGoalsCard : UserControl
         progressPanel.Controls.Add(progressFill);
 
         // Hover
-        panel.MouseEnter += (s, e) => panel.BackColor = Color.FromArgb(50, 55, 75);
-        panel.MouseLeave += (s, e) => panel.BackColor = Color.FromArgb(40, 45, 60);
+        panel.MouseEnter += (s, e) => panel.BackColor = AppTheme.CardBgHover;
+        panel.MouseLeave += (s, e) => panel.BackColor = AppTheme.CardBg;
 
         // Click - para ekle
         panel.Click += (s, e) => ShowAddMoneyDialog(goal);

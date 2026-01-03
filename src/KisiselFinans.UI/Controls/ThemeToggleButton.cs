@@ -27,10 +27,17 @@ public class ThemeToggleButton : UserControl
     {
         Size = new Size(60, 30);
         Cursor = Cursors.Hand;
-        DoubleBuffered = true;
         BackColor = Color.Transparent;
+        
+        // Mouse eventlerini yakala
+        SetStyle(ControlStyles.SupportsTransparentBackColor |
+                 ControlStyles.OptimizedDoubleBuffer |
+                 ControlStyles.AllPaintingInWmPaint |
+                 ControlStyles.UserPaint |
+                 ControlStyles.Selectable, true);
 
-        Click += OnClick;
+        MouseClick += OnClick;
+        MouseDown += (s, e) => OnClick(s, e);
         Paint += OnPaint;
 
         // Tooltip
@@ -38,7 +45,7 @@ public class ThemeToggleButton : UserControl
         tooltip.SetToolTip(this, "Tema Değiştir (Dark/Light)");
     }
 
-    private void OnClick(object? sender, EventArgs e)
+    private void OnClick(object? sender, MouseEventArgs e)
     {
         _isDark = !_isDark;
         _animationTimer.Start();

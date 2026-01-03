@@ -2,15 +2,31 @@ namespace KisiselFinans.UI.Theme;
 
 public static class AppTheme
 {
-    // === PREMIUM DARK THEME ===
+    // === DYNAMIC THEME COLORS (ThemeManager'dan alınır) ===
     
-    // Ana Arka Plan Renkleri
-    public static readonly Color PrimaryDark = Color.FromArgb(10, 10, 15);       // Derin siyah
-    public static readonly Color PrimaryMedium = Color.FromArgb(18, 18, 25);     // Koyu lacivert
-    public static readonly Color PrimaryLight = Color.FromArgb(28, 28, 38);      // Açık koyu
-    public static readonly Color Surface = Color.FromArgb(38, 38, 52);           // Yüzey
+    // Ana Arka Plan Renkleri - Dinamik
+    public static Color PrimaryDark => ThemeManager.PrimaryDark;
+    public static Color PrimaryMedium => ThemeManager.PrimaryMedium;
+    public static Color PrimaryLight => ThemeManager.PrimaryLight;
+    public static Color Surface => ThemeManager.Surface;
+    
+    // Metin Renkleri - Dinamik
+    public static Color TextPrimary => ThemeManager.TextPrimary;
+    public static Color TextSecondary => ThemeManager.TextSecondary;
+    public static Color TextMuted => ThemeManager.TextMuted;
+    
+    // Kart ve Input Renkleri - Dinamik
+    public static Color CardBg => ThemeManager.CardBg;
+    public static Color CardBgHover => ThemeManager.CurrentTheme == ThemeManager.ThemeMode.Dark 
+        ? Color.FromArgb(32, 32, 45) 
+        : Color.FromArgb(240, 242, 248);
+    public static Color InputBg => ThemeManager.InputBg;
+    public static Color InputBorder => ThemeManager.InputBorder;
+    public static Color InputFocus => GradientStart;
 
-    // Gradient Renkleri - Elektrik Mavisi & Neon Mor
+    // === STATIC ACCENT COLORS (Her iki temada aynı) ===
+    
+    // Gradient Renkleri
     public static readonly Color GradientStart = Color.FromArgb(79, 70, 229);    // Electric Indigo
     public static readonly Color GradientMid = Color.FromArgb(147, 51, 234);     // Vivid Purple  
     public static readonly Color GradientEnd = Color.FromArgb(236, 72, 153);     // Hot Pink
@@ -24,18 +40,6 @@ public static class AppTheme
     public static readonly Color AccentCyan = Color.FromArgb(34, 211, 238);      // Cyan
     public static readonly Color AccentPink = Color.FromArgb(244, 114, 182);     // Pink
     public static readonly Color AccentYellow = Color.FromArgb(250, 204, 21);    // Yellow
-
-    // Metin Renkleri
-    public static readonly Color TextPrimary = Color.FromArgb(250, 250, 255);    // Beyaz
-    public static readonly Color TextSecondary = Color.FromArgb(160, 160, 185);  // Gri-Mor
-    public static readonly Color TextMuted = Color.FromArgb(100, 100, 130);      // Soluk
-
-    // Kart ve Input Renkleri
-    public static readonly Color CardBg = Color.FromArgb(22, 22, 32);
-    public static readonly Color CardBgHover = Color.FromArgb(32, 32, 45);
-    public static readonly Color InputBg = Color.FromArgb(15, 15, 22);
-    public static readonly Color InputBorder = Color.FromArgb(55, 55, 75);
-    public static readonly Color InputFocus = Color.FromArgb(79, 70, 229);
 
     // Özel Efektler
     public static readonly Color GlowPurple = Color.FromArgb(40, 147, 51, 234);
@@ -78,10 +82,12 @@ public static class AppTheme
                     StyleDataGrid(dgv);
                     break;
                 case Panel pnl:
-                    pnl.BackColor = PrimaryMedium;
+                    if (pnl.BackColor != Color.Transparent)
+                        pnl.BackColor = PrimaryMedium;
                     break;
                 case Label lbl:
-                    lbl.ForeColor = TextPrimary;
+                    if (!IsAccentColor(lbl.ForeColor))
+                        lbl.ForeColor = TextPrimary;
                     break;
                 case NumericUpDown nud:
                     StyleNumericUpDown(nud);
@@ -99,6 +105,13 @@ public static class AppTheme
         }
     }
 
+    private static bool IsAccentColor(Color color)
+    {
+        return color == AccentGreen || color == AccentRed || color == AccentBlue ||
+               color == AccentPurple || color == AccentOrange || color == AccentCyan ||
+               color == AccentPink || color == AccentYellow;
+    }
+
     public static void StyleButton(Button btn, bool isPrimary = false)
     {
         btn.FlatStyle = FlatStyle.Flat;
@@ -109,9 +122,9 @@ public static class AppTheme
         if (isPrimary)
         {
             btn.BackColor = GradientStart;
-            btn.ForeColor = TextPrimary;
+            btn.ForeColor = Color.White;
         }
-        else
+        else if (!IsAccentColor(btn.BackColor))
         {
             btn.BackColor = Surface;
             btn.ForeColor = TextPrimary;
@@ -123,7 +136,7 @@ public static class AppTheme
         btn.FlatStyle = FlatStyle.Flat;
         btn.FlatAppearance.BorderSize = 0;
         btn.BackColor = AccentGreen;
-        btn.ForeColor = PrimaryDark;
+        btn.ForeColor = Color.FromArgb(20, 20, 30);
         btn.Cursor = Cursors.Hand;
         btn.Font = FontButton;
     }
@@ -133,7 +146,7 @@ public static class AppTheme
         btn.FlatStyle = FlatStyle.Flat;
         btn.FlatAppearance.BorderSize = 0;
         btn.BackColor = AccentRed;
-        btn.ForeColor = PrimaryDark;
+        btn.ForeColor = Color.FromArgb(20, 20, 30);
         btn.Cursor = Cursors.Hand;
         btn.Font = FontButton;
     }
@@ -183,7 +196,7 @@ public static class AppTheme
         dgv.DefaultCellStyle.BackColor = PrimaryMedium;
         dgv.DefaultCellStyle.ForeColor = TextPrimary;
         dgv.DefaultCellStyle.SelectionBackColor = GradientStart;
-        dgv.DefaultCellStyle.SelectionForeColor = TextPrimary;
+        dgv.DefaultCellStyle.SelectionForeColor = Color.White;
         dgv.DefaultCellStyle.Font = FontBody;
         dgv.DefaultCellStyle.Padding = new Padding(12, 8, 12, 8);
 

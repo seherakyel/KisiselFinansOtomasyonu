@@ -31,7 +31,7 @@ public class FinancialHealthScoreCard : UserControl
     private void InitializeComponent()
     {
         Size = new Size(320, 200);
-        BackColor = Color.FromArgb(30, 35, 50);
+        BackColor = AppTheme.PrimaryMedium;
         DoubleBuffered = true;
         Paint += OnPaint;
     }
@@ -149,7 +149,7 @@ public class FinancialHealthScoreCard : UserControl
         int circleY = 50;
 
         // Arka plan daire
-        using var bgPen = new Pen(Color.FromArgb(50, 60, 80), 10);
+        using var bgPen = new Pen(AppTheme.Surface, 10);
         g.DrawArc(bgPen, circleX, circleY, circleSize, circleSize, 0, 360);
 
         // Progress daire

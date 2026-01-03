@@ -18,6 +18,109 @@ public class MainForm : Form
         _currentUser = currentUser;
         InitializeComponent();
         LoadDashboard();
+        
+        // Tema değişikliğini dinle
+        ThemeManager.ThemeChanged += OnThemeChanged;
+    }
+
+    private void OnThemeChanged(ThemeManager.ThemeMode newTheme)
+    {
+        // Tüm formu yeniden çiz
+        BeginInvoke(() =>
+        {
+            ApplyThemeToForm();
+            
+            // Aktif kontrolü yeniden yükle (Dashboard, listeler vs)
+            if (_currentControl is DashboardControl)
+            {
+                LoadDashboard();
+            }
+            
+            Invalidate(true);
+            Refresh();
+        });
+    }
+
+    private void ApplyThemeToForm()
+    {
+        BackColor = ThemeManager.PrimaryDark;
+        
+        // Tüm kontrollere uygula
+        foreach (Control ctrl in Controls)
+        {
+            ApplyThemeToControlDeep(ctrl);
+        }
+    }
+
+    private void ApplyThemeToControlDeep(Control ctrl)
+    {
+        // Panel türlerine göre özel renkler
+        if (ctrl == _sidebarPanel)
+        {
+            ctrl.BackColor = ThemeManager.CardBg;
+        }
+        else if (ctrl == _contentPanel)
+        {
+            ctrl.BackColor = ThemeManager.PrimaryDark;
+        }
+        else if (ctrl is Panel panel)
+        {
+            // Header panel veya diğer paneller
+            if (panel.Dock == DockStyle.Top && panel.Height < 100)
+            {
+                panel.BackColor = ThemeManager.CardBg;
+            }
+            else if (panel.BackColor != Color.Transparent &&
+                     panel.BackColor != AppTheme.AccentGreen &&
+                     panel.BackColor != AppTheme.AccentRed &&
+                     panel.BackColor != AppTheme.AccentBlue &&
+                     panel.BackColor != AppTheme.GradientStart)
+            {
+                panel.BackColor = ThemeManager.PrimaryMedium;
+            }
+        }
+        else if (ctrl is Label label)
+        {
+            // Logo veya özel tag'li label'lar değiştirilmemeli
+            if (label.Tag?.ToString() == "logo") return;
+            
+            // Accent renkler ve beyaz değiştirilmemeli
+            if (label.ForeColor != AppTheme.AccentGreen &&
+                label.ForeColor != AppTheme.AccentRed &&
+                label.ForeColor != AppTheme.AccentBlue &&
+                label.ForeColor != AppTheme.AccentPurple &&
+                label.ForeColor != AppTheme.AccentCyan &&
+                label.ForeColor != AppTheme.AccentOrange &&
+                label.ForeColor != AppTheme.AccentYellow &&
+                label.ForeColor != Color.White &&
+                label.ForeColor != Color.FromArgb(255, 255, 255))
+            {
+                label.ForeColor = ThemeManager.TextPrimary;
+            }
+        }
+        else if (ctrl is Button button)
+        {
+            if (button.BackColor == Color.Transparent)
+            {
+                button.ForeColor = ThemeManager.TextSecondary;
+            }
+        }
+        else if (ctrl is FlowLayoutPanel flowPanel)
+        {
+            flowPanel.BackColor = ThemeManager.CardBg;
+        }
+
+        // Alt kontrollere de uygula
+        foreach (Control child in ctrl.Controls)
+        {
+            ApplyThemeToControlDeep(child);
+        }
+    }
+
+    protected override void OnFormClosed(FormClosedEventArgs e)
+    {
+        ThemeManager.ThemeChanged -= OnThemeChanged;
+        base.OnFormClosed(e);
     }
 
     private void InitializeComponent()
@@ -119,8 +222,10 @@ public class MainForm : Form
             Text = "FINANS",
             Font = new Font("Segoe UI", 22, FontStyle.Bold),
             ForeColor = Color.White,
+            BackColor = Color.Transparent,
             Location = new Point(70, 22),
-            AutoSize = true
+            AutoSize = true,
+            Tag = "logo" // Tema değişikliğinden etkilenmemesi için
         };
         logoArea.Controls.Add(lblLogo);
 

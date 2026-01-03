@@ -3,22 +3,24 @@ using System.Drawing.Drawing2D;
 namespace KisiselFinans.UI.Theme;
 
 /// <summary>
-/// Tüm diyaloglar için ortak stil bileşenleri
+/// Tüm diyaloglar için ortak stil bileşenleri - Dinamik tema desteği
 /// </summary>
 public static class DialogStyles
 {
-    // Renkler
-    public static readonly Color BgDark = Color.FromArgb(13, 17, 23);
-    public static readonly Color BgCard = Color.FromArgb(22, 27, 34);
-    public static readonly Color BgInput = Color.FromArgb(30, 36, 44);
-    public static readonly Color BgInputFocus = Color.FromArgb(38, 45, 55);
-    public static readonly Color BorderDefault = Color.FromArgb(48, 54, 61);
-    public static readonly Color BorderFocus = Color.FromArgb(88, 166, 255);
-    public static readonly Color TextWhite = Color.FromArgb(240, 246, 252);
-    public static readonly Color TextMuted = Color.FromArgb(125, 133, 144);
-    public static readonly Color TextLabel = Color.FromArgb(200, 206, 212);
+    // Dinamik renkler - ThemeManager'dan alınır
+    public static Color BgDark => ThemeManager.PrimaryDark;
+    public static Color BgCard => ThemeManager.CardBg;
+    public static Color BgInput => ThemeManager.InputBg;
+    public static Color BgInputFocus => ThemeManager.CurrentTheme == ThemeManager.ThemeMode.Dark 
+        ? Color.FromArgb(38, 45, 55) 
+        : Color.FromArgb(230, 235, 245);
+    public static Color BorderDefault => ThemeManager.InputBorder;
+    public static Color BorderFocus => AppTheme.AccentBlue;
+    public static Color TextWhite => ThemeManager.TextPrimary;
+    public static Color TextMuted => ThemeManager.TextMuted;
+    public static Color TextLabel => ThemeManager.TextSecondary;
 
-    // Accent Colors
+    // Accent Colors - Her iki temada aynı
     public static readonly Color AccentBlue = Color.FromArgb(88, 166, 255);
     public static readonly Color AccentGreen = Color.FromArgb(63, 185, 132);
     public static readonly Color AccentRed = Color.FromArgb(248, 81, 73);
@@ -86,7 +88,8 @@ public static class DialogStyles
             Font = new Font("Segoe UI Semibold", 16),
             ForeColor = TextWhite,
             Location = new Point(84, 14),
-            AutoSize = true
+            AutoSize = true,
+            BackColor = Color.Transparent
         };
 
         var lblSubtitle = new Label
@@ -95,7 +98,8 @@ public static class DialogStyles
             Font = new Font("Segoe UI", 10),
             ForeColor = TextMuted,
             Location = new Point(86, 40),
-            AutoSize = true
+            AutoSize = true,
+            BackColor = Color.Transparent
         };
 
         var btnClose = new Label
@@ -105,7 +109,8 @@ public static class DialogStyles
             ForeColor = TextMuted,
             Size = new Size(32, 32),
             TextAlign = ContentAlignment.MiddleCenter,
-            Cursor = Cursors.Hand
+            Cursor = Cursors.Hand,
+            BackColor = Color.Transparent
         };
         btnClose.MouseEnter += (s, e) => { btnClose.ForeColor = AccentRed; btnClose.BackColor = Color.FromArgb(40, 248, 81, 73); };
         btnClose.MouseLeave += (s, e) => { btnClose.ForeColor = TextMuted; btnClose.BackColor = Color.Transparent; };
@@ -193,7 +198,8 @@ public static class DialogStyles
             Font = new Font("Segoe UI Semibold", 9),
             ForeColor = TextLabel,
             Location = new Point(x, y),
-            AutoSize = true
+            AutoSize = true,
+            BackColor = Color.Transparent
         };
     }
 
@@ -359,4 +365,3 @@ public static class DialogStyles
         return path;
     }
 }
-

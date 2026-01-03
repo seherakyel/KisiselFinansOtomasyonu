@@ -36,8 +36,8 @@ public class AnimatedNumberCard : UserControl
 
     private void InitializeComponent()
     {
-        Size = new Size(280, 120);
-        BackColor = Color.FromArgb(30, 35, 50);
+        Size = new Size(280, 130);
+        BackColor = AppTheme.PrimaryMedium;
         Cursor = Cursors.Hand;
         DoubleBuffered = true;
 
@@ -47,9 +47,9 @@ public class AnimatedNumberCard : UserControl
         _lblIcon = new Label
         {
             Text = _icon,
-            Font = new Font("Segoe UI Emoji", 28),
+            Font = new Font("Segoe UI Emoji", 22),
             ForeColor = _accentColor,
-            Location = new Point(20, 20),
+            Location = new Point(20, 15),
             AutoSize = true,
             BackColor = Color.Transparent
         };
@@ -60,7 +60,7 @@ public class AnimatedNumberCard : UserControl
             Text = _title.ToUpper(),
             Font = new Font("Segoe UI", 9, FontStyle.Bold),
             ForeColor = AppTheme.TextMuted,
-            Location = new Point(75, 20),
+            Location = new Point(55, 18),
             AutoSize = true,
             BackColor = Color.Transparent
         };
@@ -69,18 +69,18 @@ public class AnimatedNumberCard : UserControl
         _lblValue = new Label
         {
             Text = _isCurrency ? "₺ 0" : "0",
-            Font = new Font("Segoe UI Semibold", 26),
+            Font = new Font("Segoe UI Semibold", 24),
             ForeColor = AppTheme.TextPrimary,
-            Location = new Point(20, 60),
-            AutoSize = true,
+            Location = new Point(20, 55),
+            Size = new Size(240, 50),
             BackColor = Color.Transparent
         };
 
         Controls.AddRange(new Control[] { _lblIcon, _lblTitle, _lblValue });
 
         // Hover efekti
-        MouseEnter += (s, e) => { BackColor = Color.FromArgb(40, 45, 65); Invalidate(); };
-        MouseLeave += (s, e) => { BackColor = Color.FromArgb(30, 35, 50); Invalidate(); };
+        MouseEnter += (s, e) => { BackColor = AppTheme.CardBgHover; Invalidate(); };
+        MouseLeave += (s, e) => { BackColor = AppTheme.PrimaryMedium; Invalidate(); };
     }
 
     private void OnPaint(object? sender, PaintEventArgs e)
