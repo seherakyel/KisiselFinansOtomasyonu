@@ -25,7 +25,7 @@ public class MarketDataControl : UserControl
     private void InitializeComponent()
     {
         Dock = DockStyle.Fill;
-        BackColor = AppTheme.PrimaryDark;
+        BackColor = Color.FromArgb(25, 28, 38);
         AutoScroll = true;
 
         // Header
@@ -33,7 +33,7 @@ public class MarketDataControl : UserControl
         {
             Dock = DockStyle.Top,
             Height = 80,
-            BackColor = AppTheme.PrimaryMedium
+            BackColor = Color.FromArgb(30, 35, 48)
         };
 
         var lblTitle = new Label
@@ -91,7 +91,8 @@ public class MarketDataControl : UserControl
             AutoScroll = true,
             FlowDirection = FlowDirection.LeftToRight,
             WrapContents = true,
-            Padding = new Padding(15)
+            Padding = new Padding(15),
+            BackColor = Color.FromArgb(25, 28, 38)
         };
 
         var loadingLabel = new Label
@@ -184,9 +185,10 @@ public class MarketDataControl : UserControl
         {
             Text = title,
             Font = new Font("Segoe UI Semibold", 14),
-            ForeColor = AppTheme.AccentPurple,
-            Size = new Size(_mainLayout.Width - 40, 45),
-            Padding = new Padding(5, 15, 0, 5)
+            ForeColor = AppTheme.AccentCyan,
+            Size = new Size(_mainLayout.Width - 40, 50),
+            Padding = new Padding(5, 18, 0, 8),
+            BackColor = Color.Transparent
         };
         _mainLayout.Controls.Add(header);
         _mainLayout.SetFlowBreak(header, true);
@@ -196,9 +198,9 @@ public class MarketDataControl : UserControl
     {
         var card = new Panel
         {
-            Size = new Size(280, 120),
+            Size = new Size(300, 130),
             Margin = new Padding(8),
-            BackColor = AppTheme.PrimaryMedium,
+            BackColor = Color.FromArgb(35, 40, 55),
             Cursor = Cursors.Hand
         };
 
@@ -209,30 +211,21 @@ public class MarketDataControl : UserControl
             // Sol renk çubuğu
             var color = rate.IsPositive ? AppTheme.AccentGreen : AppTheme.AccentRed;
             using var brush = new SolidBrush(color);
-            e.Graphics.FillRectangle(brush, 0, 0, 4, card.Height);
+            e.Graphics.FillRectangle(brush, 0, 0, 5, card.Height);
 
             // Alt border
-            using var pen = new Pen(Color.FromArgb(50, 255, 255, 255));
+            using var pen = new Pen(Color.FromArgb(60, 255, 255, 255));
             e.Graphics.DrawLine(pen, 0, card.Height - 1, card.Width, card.Height - 1);
         };
 
-        // İkon (bayrak emoji)
+        // İkon ve Para birimi adı (tek satırda)
         var icon = GetCurrencyIcon(rate.Name);
-        var lblIcon = new Label
-        {
-            Text = icon,
-            Font = new Font("Segoe UI Emoji", 24),
-            Location = new Point(15, 15),
-            AutoSize = true
-        };
-
-        // Para birimi adı
         var lblName = new Label
         {
-            Text = rate.Name,
-            Font = new Font("Segoe UI Semibold", 12),
+            Text = $"{icon}  {rate.Name}",
+            Font = new Font("Segoe UI Semibold", 13),
             ForeColor = AppTheme.TextPrimary,
-            Location = new Point(60, 15),
+            Location = new Point(15, 12),
             AutoSize = true
         };
 
@@ -242,9 +235,9 @@ public class MarketDataControl : UserControl
         var lblChange = new Label
         {
             Text = $"{changeIcon} %{Math.Abs(rate.ChangePercent):F2}",
-            Font = new Font("Segoe UI", 10),
+            Font = new Font("Segoe UI Semibold", 10),
             ForeColor = changeColor,
-            Location = new Point(60, 38),
+            Location = new Point(15, 40),
             AutoSize = true
         };
 
@@ -252,7 +245,7 @@ public class MarketDataControl : UserControl
         var lblBuyLabel = new Label
         {
             Text = "ALIŞ",
-            Font = new Font("Segoe UI", 8),
+            Font = new Font("Segoe UI", 9),
             ForeColor = AppTheme.TextMuted,
             Location = new Point(15, 70),
             AutoSize = true
@@ -261,9 +254,9 @@ public class MarketDataControl : UserControl
         var lblBuy = new Label
         {
             Text = $"₺{rate.BuyRate:N4}",
-            Font = new Font("Segoe UI Semibold", 14),
+            Font = new Font("Segoe UI Semibold", 15),
             ForeColor = AppTheme.TextPrimary,
-            Location = new Point(15, 85),
+            Location = new Point(15, 88),
             AutoSize = true
         };
 
@@ -271,26 +264,40 @@ public class MarketDataControl : UserControl
         var lblSellLabel = new Label
         {
             Text = "SATIŞ",
-            Font = new Font("Segoe UI", 8),
+            Font = new Font("Segoe UI", 9),
             ForeColor = AppTheme.TextMuted,
-            Location = new Point(150, 70),
+            Location = new Point(160, 70),
             AutoSize = true
         };
 
         var lblSell = new Label
         {
             Text = $"₺{rate.SellRate:N4}",
-            Font = new Font("Segoe UI Semibold", 14),
+            Font = new Font("Segoe UI Semibold", 15),
             ForeColor = AppTheme.TextPrimary,
-            Location = new Point(150, 85),
+            Location = new Point(160, 88),
             AutoSize = true
         };
 
-        // Hover efekti
-        card.MouseEnter += (s, e) => card.BackColor = Color.FromArgb(45, 55, 72);
-        card.MouseLeave += (s, e) => card.BackColor = AppTheme.PrimaryMedium;
+        // Çevrimdışı göstergesi
+        if (rate.IsOffline)
+        {
+            var lblOffline = new Label
+            {
+                Text = "⚠",
+                Font = new Font("Segoe UI", 10),
+                ForeColor = AppTheme.AccentOrange,
+                Location = new Point(275, 10),
+                AutoSize = true
+            };
+            card.Controls.Add(lblOffline);
+        }
 
-        card.Controls.AddRange(new Control[] { lblIcon, lblName, lblChange, lblBuyLabel, lblBuy, lblSellLabel, lblSell });
+        // Hover efekti
+        card.MouseEnter += (s, e) => card.BackColor = Color.FromArgb(50, 55, 75);
+        card.MouseLeave += (s, e) => card.BackColor = Color.FromArgb(35, 40, 55);
+
+        card.Controls.AddRange(new Control[] { lblName, lblChange, lblBuyLabel, lblBuy, lblSellLabel, lblSell });
         _mainLayout.Controls.Add(card);
     }
 
@@ -298,9 +305,9 @@ public class MarketDataControl : UserControl
     {
         var card = new Panel
         {
-            Size = new Size(220, 100),
+            Size = new Size(240, 110),
             Margin = new Padding(8),
-            BackColor = AppTheme.PrimaryMedium,
+            BackColor = Color.FromArgb(35, 40, 55),
             Cursor = Cursors.Hand
         };
 
@@ -310,25 +317,16 @@ public class MarketDataControl : UserControl
             
             // Sol altın rengi çubuğu
             using var brush = new SolidBrush(Color.FromArgb(255, 193, 7));
-            e.Graphics.FillRectangle(brush, 0, 0, 4, card.Height);
+            e.Graphics.FillRectangle(brush, 0, 0, 5, card.Height);
         };
 
-        // Altın ikonu
-        var lblIcon = new Label
-        {
-            Text = "🪙",
-            Font = new Font("Segoe UI Emoji", 20),
-            Location = new Point(12, 12),
-            AutoSize = true
-        };
-
-        // Altın adı
+        // Altın adı (üstte, tam görünsün)
         var lblName = new Label
         {
-            Text = gold.Name,
-            Font = new Font("Segoe UI Semibold", 11),
+            Text = $"🪙  {gold.Name}",
+            Font = new Font("Segoe UI Semibold", 12),
             ForeColor = AppTheme.TextPrimary,
-            Location = new Point(50, 15),
+            Location = new Point(15, 12),
             AutoSize = true
         };
 
@@ -340,24 +338,38 @@ public class MarketDataControl : UserControl
             Text = $"{changeIcon} %{Math.Abs(gold.ChangePercent):F2}",
             Font = new Font("Segoe UI", 9),
             ForeColor = changeColor,
-            Location = new Point(50, 38),
+            Location = new Point(15, 38),
             AutoSize = true
         };
 
         // Fiyat
         var lblPrice = new Label
         {
-            Text = $"₺{gold.Price:N0}",
-            Font = new Font("Segoe UI Semibold", 18),
-            ForeColor = Color.FromArgb(255, 193, 7),
-            Location = new Point(15, 60),
+            Text = $"₺{gold.Price:N2}",
+            Font = new Font("Segoe UI Semibold", 20),
+            ForeColor = Color.FromArgb(255, 215, 0),
+            Location = new Point(15, 62),
             AutoSize = true
         };
 
-        card.MouseEnter += (s, e) => card.BackColor = Color.FromArgb(45, 55, 72);
-        card.MouseLeave += (s, e) => card.BackColor = AppTheme.PrimaryMedium;
+        // Çevrimdışı göstergesi
+        if (gold.IsOffline)
+        {
+            var lblOffline = new Label
+            {
+                Text = "⚠",
+                Font = new Font("Segoe UI", 10),
+                ForeColor = AppTheme.AccentOrange,
+                Location = new Point(210, 10),
+                AutoSize = true
+            };
+            card.Controls.Add(lblOffline);
+        }
 
-        card.Controls.AddRange(new Control[] { lblIcon, lblName, lblChange, lblPrice });
+        card.MouseEnter += (s, e) => card.BackColor = Color.FromArgb(50, 55, 75);
+        card.MouseLeave += (s, e) => card.BackColor = Color.FromArgb(35, 40, 55);
+
+        card.Controls.AddRange(new Control[] { lblName, lblChange, lblPrice });
         _mainLayout.Controls.Add(card);
     }
 

@@ -401,28 +401,64 @@ public class ExchangeRateService
         
         // HTML decode ve temizle
         text = System.Net.WebUtility.HtmlDecode(text);
-        var cleaned = Regex.Replace(text, @"[^\d,.\-]", "");
         
-        // Türkçe format: 43.017,50 -> 43017.50
-        if (cleaned.Contains(",") && cleaned.Contains("."))
+        // Sadece rakam, virgül, nokta ve eksi al
+        var cleaned = Regex.Replace(text.Trim(), @"[^\d,.\-]", "");
+        
+        if (string.IsNullOrEmpty(cleaned)) return 0;
+
+        // Çok büyük veya anlamsız değerleri filtrele (1 milyon TL üzeri döviz kuru olmaz)
+        // Türkçe format: 43.017,50 veya 43,0170
+        
+        // Virgül sayısı ve nokta sayısı
+        int commaCount = cleaned.Count(c => c == ',');
+        int dotCount = cleaned.Count(c => c == '.');
+
+        // Eğer birden fazla nokta varsa, nokta binlik ayracı
+        if (dotCount > 1)
         {
-            // Binlik ayracı nokta, ondalık virgül
-            if (cleaned.LastIndexOf(',') > cleaned.LastIndexOf('.'))
+            cleaned = cleaned.Replace(".", "");
+            cleaned = cleaned.Replace(",", ".");
+        }
+        // Tek virgül ve tek/hiç nokta: Türkçe format (43.017,50 veya 43,0170)
+        else if (commaCount == 1)
+        {
+            // Virgülden sonraki kısım 2-4 karakter ise ondalık
+            var commaIndex = cleaned.IndexOf(',');
+            var afterComma = cleaned.Substring(commaIndex + 1);
+            
+            if (afterComma.Length <= 4 && !afterComma.Contains("."))
             {
+                // Virgül ondalık ayracı
                 cleaned = cleaned.Replace(".", "").Replace(",", ".");
             }
             else
             {
+                // Virgül binlik ayracı
                 cleaned = cleaned.Replace(",", "");
             }
         }
-        else if (cleaned.Contains(","))
+        // Sadece nokta varsa
+        else if (dotCount == 1 && commaCount == 0)
         {
-            cleaned = cleaned.Replace(",", ".");
+            // Noktadan sonra 2-4 karakter varsa ondalık
+            var dotIndex = cleaned.IndexOf('.');
+            var afterDot = cleaned.Substring(dotIndex + 1);
+            if (afterDot.Length > 4)
+            {
+                // Nokta binlik ayracı
+                cleaned = cleaned.Replace(".", "");
+            }
+            // Yoksa zaten doğru format
         }
         
         if (decimal.TryParse(cleaned, NumberStyles.Any, CultureInfo.InvariantCulture, out var result))
+        {
+            // Mantıksız büyük değerleri filtrele (döviz için 1000'den büyük TL değeri şüpheli)
+            // Ama sterlin 57 TL civarı olabilir, altın 4000+ olabilir
+            if (result > 100000) return 0; // 100.000 TL üzeri döviz/altın kuru yok
             return result;
+        }
         
         return 0;
     }
