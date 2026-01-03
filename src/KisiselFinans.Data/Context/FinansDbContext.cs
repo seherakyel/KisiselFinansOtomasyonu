@@ -19,6 +19,7 @@ public class FinansDbContext : DbContext
     public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
     public DbSet<FinancialHealthHistory> FinancialHealthHistories => Set<FinancialHealthHistory>();
     public DbSet<Insight> Insights => Set<Insight>();
+    public DbSet<SavingsGoal> SavingsGoals => Set<SavingsGoal>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -145,6 +146,16 @@ public class FinansDbContext : DbContext
                 .WithMany()
                 .HasForeignKey(i => i.RelatedCategoryId)
                 .OnDelete(DeleteBehavior.SetNull);
+        });
+
+        // SavingsGoal ⭐
+        modelBuilder.Entity<SavingsGoal>(e =>
+        {
+            e.Property(g => g.CreatedAt).HasDefaultValueSql("CURRENT_TIMESTAMP");
+            e.HasOne(g => g.User)
+                .WithMany()
+                .HasForeignKey(g => g.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
         });
     }
 }

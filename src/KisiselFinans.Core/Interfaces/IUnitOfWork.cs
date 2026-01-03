@@ -16,6 +16,7 @@ public interface IUnitOfWork : IDisposable
     IRepository<AuditLog> AuditLogs { get; }
     IRepository<FinancialHealthHistory> FinancialHealthHistories { get; }
     IRepository<Insight> Insights { get; }
+    IRepository<SavingsGoal> SavingsGoals { get; }
     
     // Generic repository erişimi
     IRepository<T> Repository<T>() where T : class;

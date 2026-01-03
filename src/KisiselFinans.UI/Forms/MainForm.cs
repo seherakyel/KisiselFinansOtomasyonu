@@ -82,15 +82,22 @@ public class MainForm : Form
         btnClose.MouseEnter += (s, e) => { btnClose.BackColor = AppTheme.AccentRed; btnClose.ForeColor = Color.White; };
         btnClose.MouseLeave += (s, e) => { btnClose.BackColor = Color.Transparent; btnClose.ForeColor = AppTheme.TextMuted; };
 
+        // 🆕 Tema Toggle Butonu
+        var themeToggle = new ThemeToggleButton
+        {
+            Anchor = AnchorStyles.Right | AnchorStyles.Top
+        };
+
         headerPanel.Resize += (s, e) =>
         {
             userPanel.Location = new Point(headerPanel.Width - 480, 12);
+            themeToggle.Location = new Point(headerPanel.Width - 560, 18);
             btnClose.Location = new Point(headerPanel.Width - 50, 0);
             btnMaximize.Location = new Point(headerPanel.Width - 95, 0);
             btnMinimize.Location = new Point(headerPanel.Width - 140, 0);
         };
 
-        headerPanel.Controls.AddRange(new Control[] { headerLine, lblAppName, userPanel, btnMinimize, btnMaximize, btnClose });
+        headerPanel.Controls.AddRange(new Control[] { headerLine, lblAppName, userPanel, themeToggle, btnMinimize, btnMaximize, btnClose });
 
         // Sidebar
         _sidebarPanel = new Panel

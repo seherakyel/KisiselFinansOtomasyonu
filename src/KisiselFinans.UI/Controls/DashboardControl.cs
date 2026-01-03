@@ -77,17 +77,51 @@ public class DashboardControl : UserControl
     {
         _mainLayout.Controls.Clear();
 
-        AddSummaryCard("💵 Aylık Gelir", _summary!.TotalIncome, AppTheme.AccentGreen);
-        AddSummaryCard("💸 Aylık Gider", _summary.TotalExpense, AppTheme.AccentRed);
-        AddSummaryCard("📊 Net Bakiye", _summary.NetBalance, _summary.NetBalance >= 0 ? AppTheme.AccentGreen : AppTheme.AccentRed);
-        AddSummaryCard("🏦 Toplam Varlık", _summary.NetWorth, AppTheme.AccentBlue);
+        // 🆕 Animasyonlu Özet Kartları
+        AddAnimatedCard("Aylık Gelir", "💵", _summary!.TotalIncome, AppTheme.AccentGreen);
+        AddAnimatedCard("Aylık Gider", "💸", _summary.TotalExpense, AppTheme.AccentRed);
+        AddAnimatedCard("Net Bakiye", "📊", _summary.NetBalance, _summary.NetBalance >= 0 ? AppTheme.AccentGreen : AppTheme.AccentRed);
+        AddAnimatedCard("Toplam Varlık", "🏦", _summary.NetWorth, AppTheme.AccentBlue);
 
         AddForecastCard();
+
+        // 🆕 Finansal Sağlık Skoru
+        var healthCard = new FinancialHealthScoreCard(_userId)
+        {
+            Margin = new Padding(10)
+        };
+        _mainLayout.Controls.Add(healthCard);
+
+        // 🆕 Tasarruf Hedefleri
+        var goalsCard = new SavingsGoalsCard(_userId)
+        {
+            Margin = new Padding(10)
+        };
+        _mainLayout.Controls.Add(goalsCard);
+
         AddPieChart();
         AddLineChart();
+
+        // 🆕 Harcama Isı Haritası
+        var heatmap = new SpendingHeatmapControl(_userId)
+        {
+            Margin = new Padding(10)
+        };
+        _mainLayout.Controls.Add(heatmap);
+
         AddAccountsList();
         AddBudgetsList();
         AddUpcomingList();
+    }
+
+    private void AddAnimatedCard(string title, string icon, decimal amount, SysColor accentColor)
+    {
+        var card = new AnimatedNumberCard(title, icon, accentColor)
+        {
+            Margin = new Padding(10)
+        };
+        card.SetValue(amount);
+        _mainLayout.Controls.Add(card);
     }
 
     private void AddSummaryCard(string title, decimal amount, SysColor accentColor)

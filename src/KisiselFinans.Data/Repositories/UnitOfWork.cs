@@ -21,6 +21,7 @@ public class UnitOfWork : IUnitOfWork
     private IRepository<AuditLog>? _auditLogs;
     private IRepository<FinancialHealthHistory>? _financialHealthHistories;
     private IRepository<Insight>? _insights;
+    private IRepository<SavingsGoal>? _savingsGoals;
 
     public UnitOfWork(FinansDbContext context)
     {
@@ -39,6 +40,7 @@ public class UnitOfWork : IUnitOfWork
     public IRepository<AuditLog> AuditLogs => _auditLogs ??= new Repository<AuditLog>(_context);
     public IRepository<FinancialHealthHistory> FinancialHealthHistories => _financialHealthHistories ??= new Repository<FinancialHealthHistory>(_context);
     public IRepository<Insight> Insights => _insights ??= new Repository<Insight>(_context);
+    public IRepository<SavingsGoal> SavingsGoals => _savingsGoals ??= new Repository<SavingsGoal>(_context);
 
     // Generic repository erişimi ⭐
     public IRepository<T> Repository<T>() where T : class
