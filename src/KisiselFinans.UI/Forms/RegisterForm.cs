@@ -9,7 +9,8 @@ public class RegisterForm : Form
 {
     public string RegisteredUsername { get; private set; } = string.Empty;
 
-    private TextBox txtFullName = null!;
+    private TextBox txtFirstName = null!;
+    private TextBox txtLastName = null!;
     private TextBox txtEmail = null!;
     private TextBox txtUsername = null!;
     private TextBox txtPassword = null!;
@@ -32,7 +33,7 @@ public class RegisterForm : Form
         KeyPreview = true;
         KeyDown += (s, e) => { if (e.KeyCode == Keys.Escape) Close(); };
 
-        // Sol Panel - Farklı Gradient
+        // Sol Panel - Gradient
         var leftPanel = new Panel
         {
             Dock = DockStyle.Left,
@@ -143,7 +144,7 @@ public class RegisterForm : Form
         // Register Card
         cardPanel = new Panel
         {
-            Size = new Size(440, 620),
+            Size = new Size(440, 680),
             BackColor = AppTheme.CardBg
         };
 
@@ -177,34 +178,42 @@ public class RegisterForm : Form
             Text = "Hesap Oluştur",
             Font = new Font("Segoe UI Light", 26),
             ForeColor = AppTheme.TextPrimary,
-            Location = new Point(45, 40),
+            Location = new Point(45, 35),
             AutoSize = true
         };
 
-        int y = 95;
-        const int fieldSpacing = 80;
+        int y = 85;
+        const int fieldSpacing = 70;
 
-        // Ad Soyad
-        var lblFullName = CreateFieldLabel("AD SOYAD", y);
-        txtFullName = CreateTextField(y + 22);
+        // Ad
+        var lblFirstName = CreateFieldLabel("AD", y);
+        txtFirstName = CreateTextField(y + 20);
+        txtFirstName.Size = new Size(168, 38);
+
+        // Soyad (yanında)
+        var lblLastName = CreateFieldLabel("SOYAD", y);
+        lblLastName.Location = new Point(227, y);
+        txtLastName = CreateTextField(y + 20);
+        txtLastName.Location = new Point(227, y + 20);
+        txtLastName.Size = new Size(168, 38);
 
         y += fieldSpacing;
         var lblEmail = CreateFieldLabel("E-POSTA", y);
-        txtEmail = CreateTextField(y + 22);
+        txtEmail = CreateTextField(y + 20);
 
         y += fieldSpacing;
         var lblUsername = CreateFieldLabel("KULLANICI ADI", y);
-        txtUsername = CreateTextField(y + 22);
+        txtUsername = CreateTextField(y + 20);
 
         y += fieldSpacing;
         var lblPassword = CreateFieldLabel("ŞİFRE", y);
-        txtPassword = CreateTextField(y + 22, true);
+        txtPassword = CreateTextField(y + 20, true);
 
         y += fieldSpacing;
         var lblConfirm = CreateFieldLabel("ŞİFRE TEKRAR", y);
-        txtConfirm = CreateTextField(y + 22, true);
+        txtConfirm = CreateTextField(y + 20, true);
 
-        y += fieldSpacing + 5;
+        y += fieldSpacing + 15;
 
         // Butonlar
         var btnRegister = new Button
@@ -240,7 +249,8 @@ public class RegisterForm : Form
         cardPanel.Controls.AddRange(new Control[]
         {
             topLine, lblTitle,
-            lblFullName, txtFullName,
+            lblFirstName, txtFirstName,
+            lblLastName, txtLastName,
             lblEmail, txtEmail,
             lblUsername, txtUsername,
             lblPassword, txtPassword,
@@ -269,8 +279,8 @@ public class RegisterForm : Form
         var txt = new TextBox
         {
             Location = new Point(45, y),
-            Size = new Size(350, 42),
-            Font = new Font("Segoe UI", 12),
+            Size = new Size(350, 38),
+            Font = new Font("Segoe UI", 11),
             BackColor = AppTheme.InputBg,
             ForeColor = AppTheme.TextPrimary,
             BorderStyle = BorderStyle.FixedSingle,
@@ -281,21 +291,45 @@ public class RegisterForm : Form
 
     private async Task RegisterAsync()
     {
-        if (string.IsNullOrWhiteSpace(txtUsername.Text) || string.IsNullOrWhiteSpace(txtPassword.Text))
+        if (string.IsNullOrWhiteSpace(txtFirstName.Text))
         {
-            MessageBox.Show("Kullanıcı adı ve şifre zorunludur.", "Uyarı", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            MessageBox.Show("Ad alanı zorunludur.", "Uyarı", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            txtFirstName.Focus();
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(txtLastName.Text))
+        {
+            MessageBox.Show("Soyad alanı zorunludur.", "Uyarı", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            txtLastName.Focus();
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(txtUsername.Text))
+        {
+            MessageBox.Show("Kullanıcı adı zorunludur.", "Uyarı", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            txtUsername.Focus();
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(txtPassword.Text))
+        {
+            MessageBox.Show("Şifre zorunludur.", "Uyarı", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            txtPassword.Focus();
             return;
         }
 
         if (txtPassword.Text != txtConfirm.Text)
         {
             MessageBox.Show("Şifreler eşleşmiyor.", "Uyarı", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            txtConfirm.Focus();
             return;
         }
 
         if (txtPassword.Text.Length < 4)
         {
             MessageBox.Show("Şifre en az 4 karakter olmalıdır.", "Uyarı", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            txtPassword.Focus();
             return;
         }
 
@@ -305,8 +339,15 @@ public class RegisterForm : Form
             using var unitOfWork = new UnitOfWork(context);
             var userService = new UserService(unitOfWork);
 
-            await userService.RegisterAsync(txtUsername.Text, txtPassword.Text, txtEmail.Text, txtFullName.Text);
+            await userService.RegisterAsync(
+                txtUsername.Text.Trim(), 
+                txtPassword.Text, 
+                txtEmail.Text.Trim(), 
+                txtFirstName.Text.Trim(), 
+                txtLastName.Text.Trim());
+            
             RegisteredUsername = txtUsername.Text;
+            MessageBox.Show("Kayıt başarılı! Giriş yapabilirsiniz.", "Başarılı", MessageBoxButtons.OK, MessageBoxIcon.Information);
             DialogResult = DialogResult.OK;
             Close();
         }

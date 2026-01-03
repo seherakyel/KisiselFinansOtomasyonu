@@ -25,7 +25,7 @@ public class UserService
         return user.PasswordHash == hash ? user : null;
     }
 
-    public async Task<User> RegisterAsync(string username, string password, string? email, string? fullName)
+    public async Task<User> RegisterAsync(string username, string password, string? email, string? firstName, string? lastName)
     {
         if (await _unitOfWork.Users.ExistsAsync(u => u.Username == username))
             throw new InvalidOperationException("Bu kullanıcı adı zaten mevcut.");
@@ -35,7 +35,8 @@ public class UserService
             Username = username,
             PasswordHash = HashPassword(password),
             Email = email,
-            FullName = fullName,
+            FirstName = firstName,
+            LastName = lastName,
             CreatedAt = DateTime.Now,
             IsActive = true
         };
@@ -75,4 +76,3 @@ public class UserService
         return Convert.ToBase64String(bytes);
     }
 }
-

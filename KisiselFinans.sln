@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio 15
-VisualStudioVersion = 15.0.35319.79
+# Visual Studio Version 17
+VisualStudioVersion = 17.14.36616.10 d17.14
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "KisiselFinans", "DXApplication1\KisiselFinans\KisiselFinans.csproj", "{0E914CAA-3C7A-4C2F-9BA7-1983A296FD9E}"
 EndProject

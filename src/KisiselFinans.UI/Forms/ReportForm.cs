@@ -1,10 +1,10 @@
+using System.IO;
+using DevExpress.XtraCharts;
 using KisiselFinans.Business.Services;
 using KisiselFinans.Core.DTOs;
 using KisiselFinans.Data.Context;
 using KisiselFinans.Data.Repositories;
 using KisiselFinans.UI.Theme;
-using ScottPlot;
-using ScottPlot.WinForms;
 using SysColor = System.Drawing.Color;
 using WinLabel = System.Windows.Forms.Label;
 
@@ -30,7 +30,6 @@ public class ReportForm : Form
         FormBorderStyle = FormBorderStyle.None;
         BackColor = AppTheme.PrimaryDark;
 
-        // Header
         var header = new Panel { Dock = DockStyle.Top, Height = 70 };
         header.Paint += (s, e) =>
         {
@@ -62,10 +61,9 @@ public class ReportForm : Form
         header.Resize += (s, e) => btnClose.Location = new Point(header.Width - 60, 10);
         header.Controls.AddRange(new Control[] { lblTitle, btnClose });
 
-        // Loading Label
         var lblLoading = new WinLabel
         {
-            Text = "Rapor yukleniyor...",
+            Text = "Rapor yükleniyor...",
             Font = new Font("Segoe UI", 14),
             ForeColor = AppTheme.TextSecondary,
             Dock = DockStyle.Fill,
@@ -93,7 +91,7 @@ public class ReportForm : Form
         }
         catch (Exception ex)
         {
-            BeginInvoke(() => MessageBox.Show($"Rapor yuklenirken hata: {ex.Message}", "Hata", MessageBoxButtons.OK, MessageBoxIcon.Error));
+            BeginInvoke(() => MessageBox.Show($"Rapor yüklenirken hata: {ex.Message}", "Hata", MessageBoxButtons.OK, MessageBoxIcon.Error));
         }
     }
 
@@ -101,7 +99,6 @@ public class ReportForm : Form
     {
         Controls.Clear();
 
-        // Header
         var header = new Panel { Dock = DockStyle.Top, Height = 70 };
         header.Paint += (s, e) =>
         {
@@ -132,7 +129,6 @@ public class ReportForm : Form
         header.Resize += (s, e) => btnClose.Location = new Point(header.Width - 60, 10);
         header.Controls.AddRange(new Control[] { lblTitle, btnClose });
 
-        // Tab Control
         var tabControl = new TabControl
         {
             Dock = DockStyle.Fill,
@@ -140,7 +136,6 @@ public class ReportForm : Form
             Padding = new Point(20, 10)
         };
 
-        // Style TabControl
         tabControl.DrawMode = TabDrawMode.OwnerDrawFixed;
         tabControl.ItemSize = new Size(180, 45);
         tabControl.DrawItem += (s, e) =>
@@ -156,17 +151,14 @@ public class ReportForm : Form
             e.Graphics.DrawString(tab.Text, e.Font!, textBrush, e.Bounds, sf);
         };
 
-        // Aylik Trend Tab
-        var tabMonthly = new TabPage("Aylik Trend") { BackColor = AppTheme.CardBg };
+        var tabMonthly = new TabPage("Aylık Trend") { BackColor = AppTheme.CardBg };
         tabMonthly.Controls.Add(CreateMonthlyChart());
         tabControl.TabPages.Add(tabMonthly);
 
-        // Kategori Dagilimi Tab
-        var tabCategory = new TabPage("Kategori Dagilimi") { BackColor = AppTheme.CardBg };
+        var tabCategory = new TabPage("Kategori Dağılımı") { BackColor = AppTheme.CardBg };
         tabCategory.Controls.Add(CreateCategoryChart());
         tabControl.TabPages.Add(tabCategory);
 
-        // Export Panel
         var exportPanel = new Panel
         {
             Dock = DockStyle.Bottom,
@@ -209,68 +201,97 @@ public class ReportForm : Form
         Controls.Add(header);
     }
 
-    private FormsPlot CreateMonthlyChart()
+    private ChartControl CreateMonthlyChart()
     {
-        var plotView = new FormsPlot { Dock = DockStyle.Fill };
+        var chartControl = new ChartControl
+        {
+            Dock = DockStyle.Fill,
+            BackColor = AppTheme.CardBg
+        };
 
         if (_summary?.MonthlyTrends != null && _summary.MonthlyTrends.Any())
         {
-            var incomeData = _summary.MonthlyTrends.Select(t => (double)t.Income).ToArray();
-            var expenseData = _summary.MonthlyTrends.Select(t => (double)t.Expense).ToArray();
-            var months = _summary.MonthlyTrends.Select(t => t.MonthName).ToArray();
+            var seriesIncome = new Series("Gelir", ViewType.Bar);
+            var seriesExpense = new Series("Gider", ViewType.Bar);
 
-            double[] positions = Enumerable.Range(0, incomeData.Length).Select(i => (double)i).ToArray();
+            foreach (var trend in _summary.MonthlyTrends)
+            {
+                seriesIncome.Points.Add(new SeriesPoint(trend.MonthName, (double)trend.Income));
+                seriesExpense.Points.Add(new SeriesPoint(trend.MonthName, (double)trend.Expense));
+            }
 
-            var barIncome = plotView.Plot.Add.Bars(positions.Select(p => p - 0.2).ToArray(), incomeData);
-            barIncome.Color = ScottPlot.Color.FromHex("#34D399");
-            barIncome.LegendText = "Gelir";
+            chartControl.Series.AddRange(new[] { seriesIncome, seriesExpense });
 
-            var barExpense = plotView.Plot.Add.Bars(positions.Select(p => p + 0.2).ToArray(), expenseData);
-            barExpense.Color = ScottPlot.Color.FromHex("#FB7185");
-            barExpense.LegendText = "Gider";
+            var incomeView = (BarSeriesView)seriesIncome.View;
+            incomeView.Color = SysColor.FromArgb(52, 211, 153);
 
-            plotView.Plot.Axes.Bottom.TickGenerator = new ScottPlot.TickGenerators.NumericManual(
-                positions.Select((p, i) => new ScottPlot.Tick(p, months[i])).ToArray()
-            );
+            var expenseView = (BarSeriesView)seriesExpense.View;
+            expenseView.Color = SysColor.FromArgb(251, 113, 133);
 
-            plotView.Plot.FigureBackground.Color = ScottPlot.Color.FromHex("#16161F");
-            plotView.Plot.DataBackground.Color = ScottPlot.Color.FromHex("#1C1C26");
-            plotView.Plot.Axes.Color(ScottPlot.Color.FromHex("#A0A0B9"));
-            plotView.Plot.Grid.MajorLineColor = ScottPlot.Color.FromHex("#26263A");
-            plotView.Plot.ShowLegend(Alignment.UpperRight);
-            plotView.Refresh();
+            var diagram = (XYDiagram)chartControl.Diagram;
+            diagram.DefaultPane.BackColor = AppTheme.CardBg;
+            diagram.AxisX.Label.TextColor = AppTheme.TextSecondary;
+            diagram.AxisY.Label.TextColor = AppTheme.TextSecondary;
+            diagram.AxisX.GridLines.Visible = false;
+
+            chartControl.Legend.Visibility = DevExpress.Utils.DefaultBoolean.True;
+            chartControl.Legend.AlignmentHorizontal = LegendAlignmentHorizontal.Right;
+            chartControl.Legend.AlignmentVertical = LegendAlignmentVertical.Top;
+            chartControl.Legend.BackColor = SysColor.Transparent;
+            chartControl.Legend.TextColor = AppTheme.TextPrimary;
         }
 
-        return plotView;
+        return chartControl;
     }
 
-    private FormsPlot CreateCategoryChart()
+    private ChartControl CreateCategoryChart()
     {
-        var plotView = new FormsPlot { Dock = DockStyle.Fill };
+        var chartControl = new ChartControl
+        {
+            Dock = DockStyle.Fill,
+            BackColor = AppTheme.CardBg
+        };
 
         if (_summary?.CategorySpendings != null && _summary.CategorySpendings.Any())
         {
-            var values = _summary.CategorySpendings.Take(8).Select(c => (double)c.Amount).ToArray();
-            var labels = _summary.CategorySpendings.Take(8).Select(c => c.CategoryName).ToArray();
+            var series = new Series("Kategoriler", ViewType.Pie);
 
-            var pie = plotView.Plot.Add.Pie(values);
-            pie.ExplodeFraction = 0.03;
+            var colors = new[] {
+                SysColor.FromArgb(79, 70, 229),
+                SysColor.FromArgb(147, 51, 234),
+                SysColor.FromArgb(236, 72, 153),
+                SysColor.FromArgb(56, 189, 248),
+                SysColor.FromArgb(52, 211, 153),
+                SysColor.FromArgb(251, 113, 133),
+                SysColor.FromArgb(250, 204, 21),
+                SysColor.FromArgb(192, 132, 252)
+            };
 
-            var colors = new[] { "#4F46E5", "#9333EA", "#EC4899", "#38BDF8", "#34D399", "#FB7185", "#FACC15", "#C084FC" };
-            for (int i = 0; i < Math.Min(pie.Slices.Count, labels.Length); i++)
+            int colorIndex = 0;
+            foreach (var category in _summary.CategorySpendings.Take(8))
             {
-                pie.Slices[i].Label = labels[i];
-                pie.Slices[i].LabelFontColor = ScottPlot.Color.FromHex("#FFFFFF");
-                pie.Slices[i].FillColor = ScottPlot.Color.FromHex(colors[i % colors.Length]);
+                var point = new SeriesPoint(category.CategoryName, (double)category.Amount);
+                point.Color = colors[colorIndex % colors.Length];
+                series.Points.Add(point);
+                colorIndex++;
             }
 
-            plotView.Plot.FigureBackground.Color = ScottPlot.Color.FromHex("#16161F");
-            plotView.Plot.DataBackground.Color = ScottPlot.Color.FromHex("#16161F");
-            plotView.Plot.HideAxesAndGrid();
-            plotView.Refresh();
+            chartControl.Series.Add(series);
+
+            var pieView = (PieSeriesView)series.View;
+            pieView.ExplodedDistancePercentage = 3;
+
+            series.LabelsVisibility = DevExpress.Utils.DefaultBoolean.True;
+            series.Label.TextPattern = "{A}: {VP:P0}";
+
+            chartControl.Legend.Visibility = DevExpress.Utils.DefaultBoolean.True;
+            chartControl.Legend.AlignmentHorizontal = LegendAlignmentHorizontal.Right;
+            chartControl.Legend.AlignmentVertical = LegendAlignmentVertical.Center;
+            chartControl.Legend.BackColor = SysColor.Transparent;
+            chartControl.Legend.TextColor = AppTheme.TextPrimary;
         }
 
-        return plotView;
+        return chartControl;
     }
 
     private void ExportToCsv()
@@ -283,7 +304,7 @@ public class ReportForm : Form
 
         if (dialog.ShowDialog() == DialogResult.OK)
         {
-            var lines = new List<string> { "Kategori;Tutar;Yuzde" };
+            var lines = new List<string> { "Kategori;Tutar;Yüzde" };
             if (_summary?.CategorySpendings != null)
             {
                 lines.AddRange(_summary.CategorySpendings.Select(c =>
@@ -299,7 +320,7 @@ public class ReportForm : Form
             }
 
             File.WriteAllLines(dialog.FileName, lines, System.Text.Encoding.UTF8);
-            MessageBox.Show("CSV dosyasi olusturuldu!", "Basarili", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            MessageBox.Show("CSV dosyası oluşturuldu!", "Başarılı", MessageBoxButtons.OK, MessageBoxIcon.Information);
         }
     }
 }

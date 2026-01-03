@@ -1,10 +1,9 @@
+using DevExpress.XtraCharts;
 using KisiselFinans.Business.Services;
 using KisiselFinans.Core.DTOs;
 using KisiselFinans.Data.Context;
 using KisiselFinans.Data.Repositories;
 using KisiselFinans.UI.Theme;
-using ScottPlot;
-using ScottPlot.WinForms;
 using SysColor = System.Drawing.Color;
 using WinLabel = System.Windows.Forms.Label;
 
@@ -78,28 +77,16 @@ public class DashboardControl : UserControl
     {
         _mainLayout.Controls.Clear();
 
-        // Özet Kartları
         AddSummaryCard("💵 Aylık Gelir", _summary!.TotalIncome, AppTheme.AccentGreen);
         AddSummaryCard("💸 Aylık Gider", _summary.TotalExpense, AppTheme.AccentRed);
         AddSummaryCard("📊 Net Bakiye", _summary.NetBalance, _summary.NetBalance >= 0 ? AppTheme.AccentGreen : AppTheme.AccentRed);
         AddSummaryCard("🏦 Toplam Varlık", _summary.NetWorth, AppTheme.AccentBlue);
 
-        // Tahmin Kartı
         AddForecastCard();
-
-        // Pasta Grafik
         AddPieChart();
-
-        // Çizgi Grafik
         AddLineChart();
-
-        // Hesap Bakiyeleri
         AddAccountsList();
-
-        // Bütçe Durumu
         AddBudgetsList();
-
-        // Yaklaşan İşlemler
         AddUpcomingList();
     }
 
@@ -202,33 +189,34 @@ public class DashboardControl : UserControl
             Height = 30
         };
 
-        var plotView = new FormsPlot
+        var chartControl = new ChartControl
         {
-            Dock = DockStyle.Fill
+            Dock = DockStyle.Fill,
+            BackColor = AppTheme.PrimaryMedium
         };
 
-        var values = _summary!.CategorySpendings.Take(6).Select(c => (double)c.Amount).ToArray();
-        var labels = _summary.CategorySpendings.Take(6).Select(c => c.CategoryName).ToArray();
-
-        if (values.Length > 0)
+        var series = new Series("Kategoriler", ViewType.Pie);
+        
+        foreach (var category in _summary!.CategorySpendings.Take(6))
         {
-            var pie = plotView.Plot.Add.Pie(values);
-            pie.ExplodeFraction = 0.05;
-            pie.SliceLabelDistance = 1.2;
-            
-            for (int i = 0; i < Math.Min(pie.Slices.Count, labels.Length); i++)
-            {
-                pie.Slices[i].Label = labels[i];
-                pie.Slices[i].LabelFontColor = ScottPlot.Color.FromHex("#FFFFFF");
-            }
-
-            plotView.Plot.FigureBackground.Color = ScottPlot.Color.FromHex("#1E1E1E");
-            plotView.Plot.DataBackground.Color = ScottPlot.Color.FromHex("#1E1E1E");
-            plotView.Plot.HideAxesAndGrid();
-            plotView.Refresh();
+            series.Points.Add(new SeriesPoint(category.CategoryName, (double)category.Amount));
         }
 
-        card.Controls.Add(plotView);
+        chartControl.Series.Add(series);
+
+        var pieView = (PieSeriesView)series.View;
+        pieView.ExplodedDistancePercentage = 5;
+
+        chartControl.Legend.Visibility = DevExpress.Utils.DefaultBoolean.True;
+        chartControl.Legend.AlignmentHorizontal = LegendAlignmentHorizontal.Right;
+        chartControl.Legend.AlignmentVertical = LegendAlignmentVertical.Center;
+        chartControl.Legend.BackColor = SysColor.Transparent;
+        chartControl.Legend.TextColor = AppTheme.TextPrimary;
+
+        series.LabelsVisibility = DevExpress.Utils.DefaultBoolean.True;
+        series.Label.TextPattern = "{A}: {VP:P0}";
+
+        card.Controls.Add(chartControl);
         card.Controls.Add(lblTitle);
         _mainLayout.Controls.Add(card);
     }
@@ -252,42 +240,45 @@ public class DashboardControl : UserControl
             Height = 30
         };
 
-        var plotView = new FormsPlot
+        var chartControl = new ChartControl
         {
-            Dock = DockStyle.Fill
+            Dock = DockStyle.Fill,
+            BackColor = AppTheme.PrimaryMedium
         };
 
-        var incomeData = _summary!.MonthlyTrends.Select(t => (double)t.Income).ToArray();
-        var expenseData = _summary.MonthlyTrends.Select(t => (double)t.Expense).ToArray();
-        var months = _summary.MonthlyTrends.Select(t => t.MonthName).ToArray();
+        var seriesIncome = new Series("Gelir", ViewType.Line);
+        var seriesExpense = new Series("Gider", ViewType.Line);
 
-        if (incomeData.Length > 0)
+        foreach (var trend in _summary!.MonthlyTrends)
         {
-            double[] xs = Enumerable.Range(0, incomeData.Length).Select(i => (double)i).ToArray();
-
-            var incomeLine = plotView.Plot.Add.Scatter(xs, incomeData);
-            incomeLine.Color = ScottPlot.Color.FromHex("#4CAF50");
-            incomeLine.LineWidth = 3;
-            incomeLine.LegendText = "Gelir";
-
-            var expenseLine = plotView.Plot.Add.Scatter(xs, expenseData);
-            expenseLine.Color = ScottPlot.Color.FromHex("#F44336");
-            expenseLine.LineWidth = 3;
-            expenseLine.LegendText = "Gider";
-
-            plotView.Plot.Axes.Bottom.TickGenerator = new ScottPlot.TickGenerators.NumericManual(
-                xs.Select((x, i) => new ScottPlot.Tick(x, months[i])).ToArray()
-            );
-
-            plotView.Plot.FigureBackground.Color = ScottPlot.Color.FromHex("#1E1E1E");
-            plotView.Plot.DataBackground.Color = ScottPlot.Color.FromHex("#2D2D2D");
-            plotView.Plot.Axes.Color(ScottPlot.Color.FromHex("#B4B4B4"));
-            plotView.Plot.Grid.MajorLineColor = ScottPlot.Color.FromHex("#3D3D3D");
-            plotView.Plot.ShowLegend(Alignment.UpperRight);
-            plotView.Refresh();
+            seriesIncome.Points.Add(new SeriesPoint(trend.MonthName, (double)trend.Income));
+            seriesExpense.Points.Add(new SeriesPoint(trend.MonthName, (double)trend.Expense));
         }
 
-        card.Controls.Add(plotView);
+        chartControl.Series.AddRange(new[] { seriesIncome, seriesExpense });
+
+        var incomeView = (LineSeriesView)seriesIncome.View;
+        incomeView.Color = SysColor.FromArgb(76, 175, 80);
+        incomeView.LineStyle.Thickness = 3;
+        incomeView.MarkerVisibility = DevExpress.Utils.DefaultBoolean.True;
+
+        var expenseView = (LineSeriesView)seriesExpense.View;
+        expenseView.Color = SysColor.FromArgb(244, 67, 54);
+        expenseView.LineStyle.Thickness = 3;
+        expenseView.MarkerVisibility = DevExpress.Utils.DefaultBoolean.True;
+
+        var diagram = (XYDiagram)chartControl.Diagram;
+        diagram.DefaultPane.BackColor = AppTheme.PrimaryMedium;
+        diagram.AxisX.Label.TextColor = AppTheme.TextSecondary;
+        diagram.AxisY.Label.TextColor = AppTheme.TextSecondary;
+
+        chartControl.Legend.Visibility = DevExpress.Utils.DefaultBoolean.True;
+        chartControl.Legend.AlignmentHorizontal = LegendAlignmentHorizontal.Right;
+        chartControl.Legend.AlignmentVertical = LegendAlignmentVertical.Top;
+        chartControl.Legend.BackColor = SysColor.Transparent;
+        chartControl.Legend.TextColor = AppTheme.TextPrimary;
+
+        card.Controls.Add(chartControl);
         card.Controls.Add(lblTitle);
         _mainLayout.Controls.Add(card);
     }

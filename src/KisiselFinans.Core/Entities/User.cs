@@ -18,8 +18,14 @@ public class User
     [MaxLength(100)]
     public string? Email { get; set; }
 
-    [MaxLength(100)]
-    public string? FullName { get; set; }
+    [MaxLength(50)]
+    public string? FirstName { get; set; }
+
+    [MaxLength(50)]
+    public string? LastName { get; set; }
+
+    [NotMapped]
+    public string FullName => $"{FirstName} {LastName}".Trim();
 
     public DateTime CreatedAt { get; set; } = DateTime.Now;
 
@@ -30,4 +36,3 @@ public class User
     public virtual ICollection<Budget> Budgets { get; set; } = new List<Budget>();
     public virtual ICollection<ScheduledTransaction> ScheduledTransactions { get; set; } = new List<ScheduledTransaction>();
 }
-
