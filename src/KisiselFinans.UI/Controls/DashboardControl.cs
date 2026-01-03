@@ -14,6 +14,8 @@ public class DashboardControl : UserControl
     private readonly int _userId;
     private DashboardSummaryDto? _summary;
     private ForecastDto? _forecast;
+    private FinancialHealthDto? _healthScore;
+    private List<InsightDto> _insights = new();
     private FlowLayoutPanel _mainLayout = null!;
 
     public DashboardControl(int userId)
@@ -65,6 +67,15 @@ public class DashboardControl : UserControl
             _summary = await dashboardService.GetDashboardSummaryAsync(_userId);
             _forecast = await dashboardService.GetForecastAsync(_userId);
 
+            // Yeni servisler ⭐
+            var healthService = new FinancialHealthService(unitOfWork);
+            var insightService = new InsightService(unitOfWork);
+
+            _healthScore = await healthService.CalculateHealthScoreAsync(_userId);
+            
+            await insightService.GenerateInsightsAsync(_userId);
+            _insights = await insightService.GetUserInsightsAsync(_userId);
+
             BeginInvoke(BuildDashboard);
         }
         catch (Exception ex)
@@ -83,6 +94,11 @@ public class DashboardControl : UserControl
         AddSummaryCard("🏦 Toplam Varlık", _summary.NetWorth, AppTheme.AccentBlue);
 
         AddForecastCard();
+        
+        // Finansal Sağlık ve İçgörüler ⭐
+        AddFinancialHealthCard();
+        AddInsightsPanel();
+        
         AddPieChart();
         AddLineChart();
         AddAccountsList();
@@ -168,6 +184,28 @@ public class DashboardControl : UserControl
 
         card.Controls.AddRange(new Control[] { stripe, lblTitle, lblForecast });
         _mainLayout.Controls.Add(card);
+    }
+
+    private void AddFinancialHealthCard()
+    {
+        if (_healthScore == null) return;
+
+        var healthCard = new FinancialHealthCard
+        {
+            Margin = new Padding(10)
+        };
+        healthCard.SetHealth(_healthScore);
+        _mainLayout.Controls.Add(healthCard);
+    }
+
+    private void AddInsightsPanel()
+    {
+        var insightsPanel = new InsightsPanel
+        {
+            Margin = new Padding(10)
+        };
+        insightsPanel.SetInsights(_insights);
+        _mainLayout.Controls.Add(insightsPanel);
     }
 
     private void AddPieChart()

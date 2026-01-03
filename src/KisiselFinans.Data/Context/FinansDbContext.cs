@@ -14,6 +14,11 @@ public class FinansDbContext : DbContext
     public DbSet<Transaction> Transactions => Set<Transaction>();
     public DbSet<ScheduledTransaction> ScheduledTransactions => Set<ScheduledTransaction>();
     public DbSet<Budget> Budgets => Set<Budget>();
+    
+    // Yeni tablolar ⭐
+    public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
+    public DbSet<FinancialHealthHistory> FinancialHealthHistories => Set<FinancialHealthHistory>();
+    public DbSet<Insight> Insights => Set<Insight>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -107,6 +112,39 @@ public class FinansDbContext : DbContext
                 .HasForeignKey(b => b.CategoryId)
                 .OnDelete(DeleteBehavior.Restrict);
         });
+
+        // AuditLog ⭐
+        modelBuilder.Entity<AuditLog>(e =>
+        {
+            e.Property(a => a.CreatedAt).HasDefaultValueSql("CURRENT_TIMESTAMP");
+            e.HasOne(a => a.User)
+                .WithMany()
+                .HasForeignKey(a => a.UserId)
+                .OnDelete(DeleteBehavior.SetNull);
+        });
+
+        // FinancialHealthHistory ⭐
+        modelBuilder.Entity<FinancialHealthHistory>(e =>
+        {
+            e.Property(f => f.CalculatedAt).HasDefaultValueSql("CURRENT_TIMESTAMP");
+            e.HasOne(f => f.User)
+                .WithMany()
+                .HasForeignKey(f => f.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // Insight ⭐
+        modelBuilder.Entity<Insight>(e =>
+        {
+            e.Property(i => i.CreatedAt).HasDefaultValueSql("CURRENT_TIMESTAMP");
+            e.HasOne(i => i.User)
+                .WithMany()
+                .HasForeignKey(i => i.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+            e.HasOne(i => i.RelatedCategory)
+                .WithMany()
+                .HasForeignKey(i => i.RelatedCategoryId)
+                .OnDelete(DeleteBehavior.SetNull);
+        });
     }
 }
-

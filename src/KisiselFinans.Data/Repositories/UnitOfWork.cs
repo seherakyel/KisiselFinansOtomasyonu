@@ -9,6 +9,7 @@ public class UnitOfWork : IUnitOfWork
 {
     private readonly FinansDbContext _context;
     private IDbContextTransaction? _transaction;
+    private readonly Dictionary<Type, object> _repositories = new();
 
     private IRepository<User>? _users;
     private IRepository<Account>? _accounts;
@@ -17,6 +18,9 @@ public class UnitOfWork : IUnitOfWork
     private IRepository<Transaction>? _transactions;
     private IRepository<ScheduledTransaction>? _scheduledTransactions;
     private IRepository<Budget>? _budgets;
+    private IRepository<AuditLog>? _auditLogs;
+    private IRepository<FinancialHealthHistory>? _financialHealthHistories;
+    private IRepository<Insight>? _insights;
 
     public UnitOfWork(FinansDbContext context)
     {
@@ -30,6 +34,22 @@ public class UnitOfWork : IUnitOfWork
     public IRepository<Transaction> Transactions => _transactions ??= new Repository<Transaction>(_context);
     public IRepository<ScheduledTransaction> ScheduledTransactions => _scheduledTransactions ??= new Repository<ScheduledTransaction>(_context);
     public IRepository<Budget> Budgets => _budgets ??= new Repository<Budget>(_context);
+    
+    // Yeni repository'ler ⭐
+    public IRepository<AuditLog> AuditLogs => _auditLogs ??= new Repository<AuditLog>(_context);
+    public IRepository<FinancialHealthHistory> FinancialHealthHistories => _financialHealthHistories ??= new Repository<FinancialHealthHistory>(_context);
+    public IRepository<Insight> Insights => _insights ??= new Repository<Insight>(_context);
+
+    // Generic repository erişimi ⭐
+    public IRepository<T> Repository<T>() where T : class
+    {
+        var type = typeof(T);
+        if (!_repositories.ContainsKey(type))
+        {
+            _repositories[type] = new Repository<T>(_context);
+        }
+        return (IRepository<T>)_repositories[type];
+    }
 
     public async Task<int> SaveChangesAsync() => await _context.SaveChangesAsync();
 
@@ -64,4 +84,3 @@ public class UnitOfWork : IUnitOfWork
         _context.Dispose();
     }
 }
-

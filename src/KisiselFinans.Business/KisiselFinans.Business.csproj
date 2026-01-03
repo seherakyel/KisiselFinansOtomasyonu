@@ -7,9 +7,12 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="QuestPDF" Version="2024.3.0" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\KisiselFinans.Core\KisiselFinans.Core.csproj" />
     <ProjectReference Include="..\KisiselFinans.Data\KisiselFinans.Data.csproj" />
   </ItemGroup>
 
 </Project>
-

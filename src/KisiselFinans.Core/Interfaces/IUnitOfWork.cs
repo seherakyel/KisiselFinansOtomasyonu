@@ -11,10 +11,17 @@ public interface IUnitOfWork : IDisposable
     IRepository<Transaction> Transactions { get; }
     IRepository<ScheduledTransaction> ScheduledTransactions { get; }
     IRepository<Budget> Budgets { get; }
+    
+    // Yeni entity'ler için ⭐
+    IRepository<AuditLog> AuditLogs { get; }
+    IRepository<FinancialHealthHistory> FinancialHealthHistories { get; }
+    IRepository<Insight> Insights { get; }
+    
+    // Generic repository erişimi
+    IRepository<T> Repository<T>() where T : class;
 
     Task<int> SaveChangesAsync();
     Task BeginTransactionAsync();
     Task CommitAsync();
     Task RollbackAsync();
 }
-

@@ -32,6 +32,8 @@ public class Repository<T> : IRepository<T> where T : class
 
     public void Remove(T entity) => _dbSet.Remove(entity);
 
+    public void Delete(T entity) => _dbSet.Remove(entity);
+
     public async Task<bool> ExistsAsync(Expression<Func<T, bool>> predicate) 
         => await _dbSet.AnyAsync(predicate);
 

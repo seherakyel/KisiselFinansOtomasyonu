@@ -1,6 +1,12 @@
+using KisiselFinans.Business.Services;
 using KisiselFinans.Core.Entities;
+using KisiselFinans.Core.Interfaces;
+using KisiselFinans.Data.Context;
+using KisiselFinans.Data.Repositories;
 using KisiselFinans.UI.Controls;
 using KisiselFinans.UI.Theme;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 
 namespace KisiselFinans.UI.Forms;
 
@@ -18,6 +24,7 @@ public class MainForm : Form
         _currentUser = currentUser;
         InitializeComponent();
         LoadDashboard();
+        CheckBudgetAlertsAsync();
     }
 
     private void InitializeComponent()
@@ -128,22 +135,24 @@ public class MainForm : Form
         };
 
         AddMenuGroup(menuContainer, "GENEL");
-        CreateMenuButton(menuContainer, "Dashboard", () => LoadDashboard());
+        CreateMenuButton(menuContainer, "📊 Dashboard", () => LoadDashboard());
 
         AddMenuGroup(menuContainer, "ISLEMLER");
-        CreateMenuButton(menuContainer, "Gelir Ekle", () => ShowTransactionDialog(1));
-        CreateMenuButton(menuContainer, "Gider Ekle", () => ShowTransactionDialog(2));
-        CreateMenuButton(menuContainer, "Transfer", () => ShowTransferDialog());
-        CreateMenuButton(menuContainer, "Tum Islemler", () => LoadControl(new TransactionListControl(_currentUser.Id)));
+        CreateMenuButton(menuContainer, "➕ Gelir Ekle", () => ShowTransactionDialog(1));
+        CreateMenuButton(menuContainer, "➖ Gider Ekle", () => ShowTransactionDialog(2));
+        CreateMenuButton(menuContainer, "🔄 Transfer", () => ShowTransferDialog());
+        CreateMenuButton(menuContainer, "📋 Tum Islemler", () => LoadControl(new TransactionListControl(_currentUser.Id)));
 
         AddMenuGroup(menuContainer, "YONETIM");
-        CreateMenuButton(menuContainer, "Hesaplar", () => LoadControl(new AccountListControl(_currentUser.Id)));
-        CreateMenuButton(menuContainer, "Butceler", () => LoadControl(new BudgetListControl(_currentUser.Id)));
-        CreateMenuButton(menuContainer, "Planli Islemler", () => LoadControl(new ScheduledListControl(_currentUser.Id)));
-        CreateMenuButton(menuContainer, "Kategoriler", () => LoadControl(new CategoryListControl(_currentUser.Id)));
+        CreateMenuButton(menuContainer, "🏦 Hesaplar", () => LoadControl(new AccountListControl(_currentUser.Id)));
+        CreateMenuButton(menuContainer, "🎯 Butceler", () => LoadControl(new BudgetListControl(_currentUser.Id)));
+        CreateMenuButton(menuContainer, "📅 Planli Islemler", () => LoadControl(new ScheduledListControl(_currentUser.Id)));
+        CreateMenuButton(menuContainer, "🏷️ Kategoriler", () => LoadControl(new CategoryListControl(_currentUser.Id)));
 
         AddMenuGroup(menuContainer, "ANALIZ");
-        CreateMenuButton(menuContainer, "Raporlar", () => ShowReportDialog());
+        CreateMenuButton(menuContainer, "📈 Raporlar", () => ShowReportDialog());
+        CreateMenuButton(menuContainer, "📥 CSV Import", () => ShowCsvImportDialog());
+        CreateMenuButton(menuContainer, "📄 PDF Rapor", () => ExportPdfReport());
 
         _sidebarPanel.Controls.Add(menuContainer);
         _sidebarPanel.Controls.Add(logoArea);
@@ -174,7 +183,7 @@ public class MainForm : Form
 
         var lblVersion = new Label
         {
-            Text = "v1.0.0  ",
+            Text = "v2.0.0  ",
             Font = AppTheme.FontSmall,
             ForeColor = AppTheme.TextMuted,
             Dock = DockStyle.Right,
@@ -268,7 +277,7 @@ public class MainForm : Form
 
     private void LoadDashboard()
     {
-        if (_menuButtons.TryGetValue("Dashboard", out var btn))
+        if (_menuButtons.TryGetValue("📊 Dashboard", out var btn))
         {
             if (_activeButton != null)
             {
@@ -289,6 +298,7 @@ public class MainForm : Form
         {
             if (_currentControl is DashboardControl dc) dc.RefreshData();
             else if (_currentControl is TransactionListControl tc) tc.RefreshData();
+            CheckBudgetAlertsAsync();
         }
     }
 
@@ -305,5 +315,88 @@ public class MainForm : Form
     {
         using var dialog = new ReportForm(_currentUser.Id);
         dialog.ShowDialog();
+    }
+
+    private void ShowCsvImportDialog()
+    {
+        using var unitOfWork = CreateUnitOfWork();
+        using var dialog = new CsvImportDialog(unitOfWork, _currentUser.Id);
+        if (dialog.ShowDialog() == DialogResult.OK)
+        {
+            if (_currentControl is DashboardControl dc) dc.RefreshData();
+            else if (_currentControl is TransactionListControl tc) tc.RefreshData();
+        }
+    }
+
+    private async void ExportPdfReport()
+    {
+        try
+        {
+            using var sfd = new SaveFileDialog
+            {
+                Filter = "PDF Dosyası|*.pdf",
+                Title = "PDF Raporunu Kaydet",
+                FileName = $"FinansRaporu_{DateTime.Now:yyyy_MM}.pdf"
+            };
+
+            if (sfd.ShowDialog() == DialogResult.OK)
+            {
+                using var unitOfWork = CreateUnitOfWork();
+                var pdfService = new PdfReportService(unitOfWork);
+                await pdfService.SaveReportAsync(_currentUser.Id, DateTime.Now.Year, DateTime.Now.Month, sfd.FileName);
+                
+                Toast.Success("PDF Oluşturuldu!", "Rapor başarıyla kaydedildi.");
+                
+                // PDF'i aç
+                System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+                {
+                    FileName = sfd.FileName,
+                    UseShellExecute = true
+                });
+            }
+        }
+        catch (Exception ex)
+        {
+            Toast.Error("Hata!", ex.Message);
+        }
+    }
+
+    private async void CheckBudgetAlertsAsync()
+    {
+        try
+        {
+            using var unitOfWork = CreateUnitOfWork();
+            var insightService = new InsightService(unitOfWork);
+            
+            // İçgörüleri oluştur
+            await insightService.GenerateInsightsAsync(_currentUser.Id);
+            
+            // Bütçe uyarılarını kontrol et
+            var alerts = await insightService.GetBudgetAlertsAsync(_currentUser.Id);
+            
+            foreach (var alert in alerts.Where(a => a.AlertLevel != "Normal").Take(2))
+            {
+                Toast.BudgetAlert(alert.CategoryName, alert.Percentage);
+            }
+        }
+        catch
+        {
+            // Sessizce hata yoksay
+        }
+    }
+
+    private IUnitOfWork CreateUnitOfWork()
+    {
+        var config = new ConfigurationBuilder()
+            .SetBasePath(AppDomain.CurrentDomain.BaseDirectory)
+            .AddJsonFile("appsettings.json")
+            .Build();
+
+        var connectionString = config.GetConnectionString("DefaultConnection");
+        var optionsBuilder = new DbContextOptionsBuilder<FinansDbContext>();
+        optionsBuilder.UseMySql(connectionString, ServerVersion.AutoDetect(connectionString));
+
+        var context = new FinansDbContext(optionsBuilder.Options);
+        return new UnitOfWork(context);
     }
 }
