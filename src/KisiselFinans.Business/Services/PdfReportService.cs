@@ -1,4 +1,4 @@
-using KisiselFinans.Core.DTOs;
+using System.IO;
 using KisiselFinans.Core.Entities;
 using KisiselFinans.Core.Interfaces;
 using QuestPDF.Fluent;
@@ -8,7 +8,7 @@ using QuestPDF.Infrastructure;
 namespace KisiselFinans.Business.Services;
 
 /// <summary>
-/// PDF Rapor Oluşturma Servisi ⭐
+/// PDF Rapor Oluşturma Servisi
 /// </summary>
 public class PdfReportService
 {
@@ -48,7 +48,7 @@ public class PdfReportService
         var categorySpending = transactions
             .Where(t => t.TransactionType == 2)
             .GroupBy(t => t.CategoryId)
-            .Select(g => new
+            .Select(g => new CategorySpendingItem
             {
                 CategoryId = g.Key,
                 CategoryName = categories.FirstOrDefault(c => c.Id == g.Key)?.CategoryName ?? "Diğer",
@@ -57,6 +57,10 @@ public class PdfReportService
             })
             .OrderByDescending(x => x.Total)
             .ToList();
+
+        var txList = transactions.ToList();
+        var catList = categories.ToList();
+        var accList = accounts.ToList();
 
         // PDF Oluştur
         var document = Document.Create(container =>
@@ -68,7 +72,7 @@ public class PdfReportService
                 page.DefaultTextStyle(x => x.FontSize(10));
 
                 page.Header().Element(c => ComposeHeader(c, user, year, month));
-                page.Content().Element(c => ComposeContent(c, totalIncome, totalExpense, netBalance, categorySpending, transactions.ToList(), categories.ToList(), accounts.ToList()));
+                page.Content().Element(c => ComposeContent(c, totalIncome, totalExpense, netBalance, categorySpending, txList, catList, accList));
                 page.Footer().Element(ComposeFooter);
             });
         });
@@ -91,19 +95,13 @@ public class PdfReportService
                 column.Item().Text($"Hazırlayan: {user?.FullName ?? user?.Username}")
                     .FontSize(10).FontColor(Colors.Grey.Medium);
             });
-
-            row.ConstantItem(100).Height(50)
-                .AlignRight()
-                .AlignMiddle()
-                .Text($"📊")
-                .FontSize(40);
         });
 
         container.PaddingBottom(10).BorderBottom(2).BorderColor(Colors.Blue.Darken2);
     }
 
     private void ComposeContent(IContainer container, decimal income, decimal expense, decimal net,
-        dynamic categorySpending, List<Transaction> transactions, List<Category> categories, List<Account> accounts)
+        List<CategorySpendingItem> categorySpending, List<Transaction> transactions, List<Category> categories, List<Account> accounts)
     {
         container.PaddingVertical(10).Column(column =>
         {
@@ -248,7 +246,7 @@ public class PdfReportService
                 text.CurrentPageNumber();
                 text.Span(" / ");
                 text.TotalPages();
-            }).FontSize(8).FontColor(Colors.Grey.Medium);
+            });
         });
     }
 
@@ -260,5 +258,12 @@ public class PdfReportService
         var pdfBytes = await GenerateMonthlyReportAsync(userId, year, month);
         await File.WriteAllBytesAsync(filePath, pdfBytes);
     }
-}
 
+    private class CategorySpendingItem
+    {
+        public int? CategoryId { get; set; }
+        public string CategoryName { get; set; } = "";
+        public decimal Total { get; set; }
+        public int Count { get; set; }
+    }
+}
