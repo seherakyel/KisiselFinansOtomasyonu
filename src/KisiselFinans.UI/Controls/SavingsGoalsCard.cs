@@ -70,7 +70,7 @@ public class SavingsGoalsCard : UserControl
             FlowDirection = FlowDirection.TopDown,
             WrapContents = false,
             BackColor = Color.Transparent,
-            Padding = new Padding(2, 0, 0, 0)
+            Padding = new Padding(5, 0, 0, 0)
         };
 
         Controls.Add(_goalsPanel);
@@ -144,8 +144,8 @@ public class SavingsGoalsCard : UserControl
     {
         var panel = new Panel
         {
-            Size = new Size(305, 55),
-            Margin = new Padding(3, 5, 0, 5),
+            Size = new Size(300, 55),
+            Margin = new Padding(8, 5, 0, 5),
             BackColor = AppTheme.CardBg,
             Cursor = Cursors.Hand
         };
@@ -157,7 +157,7 @@ public class SavingsGoalsCard : UserControl
         {
             Text = goal.Icon,
             Font = new Font("Segoe UI Emoji", 16),
-            Location = new Point(10, 8),
+            Location = new Point(15, 8),
             AutoSize = true
         };
 
@@ -167,7 +167,7 @@ public class SavingsGoalsCard : UserControl
             Text = goal.Name,
             Font = new Font("Segoe UI Semibold", 10),
             ForeColor = AppTheme.TextPrimary,
-            Location = new Point(45, 5),
+            Location = new Point(55, 5),
             AutoSize = true
         };
 
@@ -177,7 +177,7 @@ public class SavingsGoalsCard : UserControl
             Text = $"₺{goal.CurrentAmount:N0} / ₺{goal.TargetAmount:N0}",
             Font = new Font("Segoe UI", 9),
             ForeColor = AppTheme.TextSecondary,
-            Location = new Point(45, 22),
+            Location = new Point(55, 22),
             AutoSize = true
         };
 
@@ -188,22 +188,22 @@ public class SavingsGoalsCard : UserControl
             Text = $"%{percentage:F0}",
             Font = new Font("Segoe UI Semibold", 10),
             ForeColor = goalColor,
-            Location = new Point(260, 10),
+            Location = new Point(250, 10),
             AutoSize = true
         };
 
         // Progress bar (custom)
         var progressPanel = new Panel
         {
-            Location = new Point(45, 42),
-            Size = new Size(220, 8),
+            Location = new Point(55, 42),
+            Size = new Size(200, 8),
             BackColor = AppTheme.Surface
         };
 
         var progressFill = new Panel
         {
             Location = new Point(0, 0),
-            Size = new Size((int)(220 * percentage / 100), 8),
+            Size = new Size((int)(200 * percentage / 100), 8),
             BackColor = goalColor
         };
         progressPanel.Controls.Add(progressFill);
