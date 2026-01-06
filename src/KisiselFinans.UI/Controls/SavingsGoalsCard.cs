@@ -69,7 +69,8 @@ public class SavingsGoalsCard : UserControl
             AutoScroll = true,
             FlowDirection = FlowDirection.TopDown,
             WrapContents = false,
-            BackColor = Color.Transparent
+            BackColor = Color.Transparent,
+            Padding = new Padding(2, 0, 0, 0)
         };
 
         Controls.Add(_goalsPanel);
@@ -143,8 +144,8 @@ public class SavingsGoalsCard : UserControl
     {
         var panel = new Panel
         {
-            Size = new Size(310, 55),
-            Margin = new Padding(0, 5, 0, 5),
+            Size = new Size(305, 55),
+            Margin = new Padding(3, 5, 0, 5),
             BackColor = AppTheme.CardBg,
             Cursor = Cursors.Hand
         };
