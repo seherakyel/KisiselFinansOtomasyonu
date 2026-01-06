@@ -49,7 +49,7 @@ public class AnimatedNumberCard : UserControl
             Text = _icon,
             Font = new Font("Segoe UI Emoji", 22),
             ForeColor = _accentColor,
-            Location = new Point(20, 15),
+            Location = new Point(15, 15),
             AutoSize = true,
             BackColor = Color.Transparent
         };
@@ -60,7 +60,7 @@ public class AnimatedNumberCard : UserControl
             Text = _title.ToUpper(),
             Font = new Font("Segoe UI", 9, FontStyle.Bold),
             ForeColor = AppTheme.TextMuted,
-            Location = new Point(55, 18),
+            Location = new Point(70, 18),
             AutoSize = true,
             BackColor = Color.Transparent
         };
